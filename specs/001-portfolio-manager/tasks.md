@@ -287,17 +287,17 @@ Set up database, authentication middleware, API base structure, and utilities. T
 
 ### Phase 7 Tasks
 
-- [ ] T075 [US5] Create cash deployment service: `src/backend/services/cash-deployment.service.ts` with proportional allocation calculator
-- [ ] T076 [US5] [P] Write unit test: `tests/unit/account/cash-deployment.test.ts` for allocation algorithm (Red-Green-Refactor)
-- [ ] T077 [US5] Create trades service: `src/backend/services/trades.service.ts` for Schwab order submission and audit logging
-- [ ] T078 [US5] Create API endpoint: `src/pages/api/accounts/[id]/deploy-cash.ts` that calculates and previews deployment
-- [ ] T079 [US5] Create API endpoint: `src/pages/api/accounts/[id]/deploy-cash/execute.ts` that submits trades to Schwab
-- [ ] T080 [US5] [P] Write integration test: `tests/integration/cash-deployment.test.ts` for acceptance scenarios 1-5 including SC-005 performance
-- [ ] T081 [US5] Create cash deployment hook: `src/features/account-management/hooks/useCashDeployment.ts` managing deployment state
-- [ ] T082 [US5] Create deployment widget: `src/features/account-management/components/CashDeploymentWidget/CashDeploymentWidget.tsx` with preview and execution
-- [ ] T083 [US5] Create trade preview component: `src/features/account-management/components/TradePreview/TradePreview.tsx` showing proposed trades and projected allocation
-- [ ] T084 [US5] Create confirmation dialog: `src/shared/components/ConfirmationDialog/ConfirmationDialog.tsx` for destructive operations
-- [ ] T085 [US5] Add error handling for Schwab API failures in deployment flow
+- [X] T075 [US5] Create cash deployment service: `src/backend/services/cash-deployment.service.ts` with proportional allocation calculator
+- [X] T076 [US5] [P] Write unit test: `tests/unit/account/cash-deployment.test.ts` for allocation algorithm (Red-Green-Refactor)
+- [X] T077 [US5] Create trades service: `src/backend/services/trades.service.ts` for Schwab order submission and audit logging
+- [X] T078 [US5] Create API endpoint: `src/pages/api/accounts/[id]/deploy-cash.ts` that calculates and previews deployment
+- [X] T079 [US5] Create API endpoint: `src/pages/api/accounts/[id]/deploy-cash/execute.ts` that submits trades to Schwab
+- [X] T080 [US5] [P] Write integration test: `tests/integration/cash-deployment.test.ts` for acceptance scenarios 1-5 including SC-005 performance
+- [X] T081 [US5] Create cash deployment hook: `src/features/account-management/hooks/useCashDeployment.ts` managing deployment state
+- [X] T082 [US5] Create deployment widget: `src/features/account-management/components/CashDeploymentWidget/CashDeploymentWidget.tsx` with preview and execution
+- [X] T083 [US5] Create trade preview component: `src/features/account-management/components/TradePreview/TradePreview.tsx` showing proposed trades and projected allocation
+- [X] T084 [US5] Create confirmation dialog: `src/shared/components/ConfirmationDialog/ConfirmationDialog.tsx` for destructive operations
+- [X] T085 [US5] Add error handling for Schwab API failures in deployment flow
 
 ---
 
@@ -322,17 +322,17 @@ Set up database, authentication middleware, API base structure, and utilities. T
 
 ### Phase 8 Tasks
 
-- [ ] T086 [US6] Create rebalance service: `src/backend/services/rebalance.service.ts` with full rebalance calculator
-- [ ] T087 [US6] [P] Write unit test: `tests/unit/account/rebalance-calculator.test.ts` for rebalance logic (Red-Green-Refactor)
-- [ ] T088 [US6] Create API endpoint: `src/pages/api/accounts/[id]/rebalance.ts` that calculates and previews rebalance
-- [ ] T089 [US6] Create API endpoint: `src/pages/api/accounts/[id]/rebalance/execute.ts` that submits rebalance trades atomically
-- [ ] T090 [US6] [P] Write integration test: `tests/integration/rebalance-flow.test.ts` for acceptance scenarios 1-5 including SC-006 performance and atomicity
-- [ ] T091 [US6] Create rebalance hook: `src/features/account-management/hooks/useRebalance.ts` managing rebalance state
-- [ ] T092 [US6] Create rebalance preview component: `src/features/account-management/components/RebalancePreview/RebalancePreview.tsx` showing all trades
-- [ ] T093 [US6] Add atomic transaction support: `src/backend/utils/transaction.ts` ensuring all trades succeed/fail together
-- [ ] T094 [US6] Create error recovery for partial failures: detect and suggest alternative rebalance
-- [ ] T095 [US6] Add liquidity analysis: `src/backend/services/liquidity-analyzer.service.ts` checking if full rebalance is possible
-- [ ] T096 [US6] Create insufficient liquidity dialog with partial rebalance suggestion
+- [X] T086 [US6] Create rebalance service: `src/backend/services/rebalance.service.ts` with full rebalance calculator
+- [X] T087 [US6] [P] Write unit test: `tests/unit/account/rebalance-calculator.test.ts` for rebalance logic (Red-Green-Refactor)
+- [X] T088 [US6] Create API endpoint: `src/pages/api/accounts/[id]/rebalance.ts` that calculates and previews rebalance
+- [X] T089 [US6] Create API endpoint: `src/pages/api/accounts/[id]/rebalance/execute.ts` that submits rebalance trades atomically
+- [X] T090 [US6] [P] Write integration test: `tests/integration/rebalance-flow.test.ts` for acceptance scenarios 1-5 including SC-006 performance and atomicity
+- [X] T091 [US6] Create rebalance hook: `src/features/account-management/hooks/useRebalance.ts` managing rebalance state
+- [X] T092 [US6] Create rebalance preview component: `src/features/account-management/components/RebalancePreview/RebalancePreview.tsx` showing all trades
+- [X] T093 [US6] Add atomic transaction support: `src/backend/utils/transaction.ts` ensuring all trades succeed/fail together
+- [X] T094 [US6] Create error recovery for partial failures: detect and suggest alternative rebalance
+- [X] T095 [US6] Add liquidity analysis: `src/backend/services/liquidity-analyzer.service.ts` checking if full rebalance is possible
+- [X] T096 [US6] Create insufficient liquidity dialog with partial rebalance suggestion
 
 ---
 

@@ -17,7 +17,7 @@ interface ModelAllocation {
   targetWeightPct: number; // Percentage of entire portfolio
 }
 
-interface DriftCalculation {
+export interface DriftCalculation {
   symbol: string;
   currentWeight: number; // % of portfolio
   targetWeight: number; // % of portfolio
