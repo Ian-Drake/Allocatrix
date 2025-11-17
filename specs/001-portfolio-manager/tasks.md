@@ -357,17 +357,17 @@ Set up database, authentication middleware, API base structure, and utilities. T
 
 ### Phase 9 Tasks
 
-- [ ] T097 [US7] Create historical data service: `src/backend/services/historical-data.service.ts` fetching and caching prices from Schwab
-- [ ] T098 [US7] Create backtest engine: `src/backend/services/backtest.service.ts` with Monte Carlo simulation
-- [ ] T099 [US7] Create analysis service: `src/backend/services/analysis.service.ts` calculating return, volatility, Sharpe, drawdown
-- [ ] T100 [US7] [P] Write unit test: `tests/unit/analysis/backtest-engine.test.ts` for simulation logic
-- [ ] T101 [US7] [P] Write unit test: `tests/unit/analysis/metrics-calculator.test.ts` for metric calculations
-- [ ] T102 [US7] Create API endpoint: `src/pages/api/analysis/backtest.ts` that runs backtest and stores results
-- [ ] T103 [US7] Create API endpoint: `src/pages/api/analysis/results.ts` that retrieves cached backtest results
-- [ ] T104 [US7] [P] Write integration test: `tests/integration/backtest.test.ts` for acceptance scenarios 1-5 including SC-008 performance
-- [ ] T105 [US7] Create analysis hook: `src/features/analysis/hooks/useBacktest.ts` managing backtest state
-- [ ] T106 [US7] Create backtest form: `src/features/analysis/components/BacktestForm/BacktestForm.tsx` for date range and rebalance frequency selection
-- [ ] T107 [US7] Create results visualization: `src/features/analysis/components/PerformanceChart/PerformanceChart.tsx` with chart comparison
+- [X] T097 [US7] Create historical data service: `src/backend/services/historical-data.service.ts` fetching and caching prices from Schwab
+- [X] T098 [US7] Create backtest engine: `src/backend/services/backtest.service.ts` with Monte Carlo simulation
+- [X] T099 [US7] Create analysis service: `src/backend/services/analysis.service.ts` calculating return, volatility, Sharpe, drawdown
+- [X] T100 [US7] [P] Write unit test: `tests/unit/analysis/backtest-engine.test.ts` for simulation logic
+- [X] T101 [US7] [P] Write unit test: `tests/unit/analysis/metrics-calculator.test.ts` for metric calculations
+- [X] T102 [US7] Create API endpoint: `src/pages/api/analysis/backtest.ts` that runs backtest and stores results
+- [X] T103 [US7] Create API endpoint: `src/pages/api/analysis/results.ts` that retrieves cached backtest results
+- [X] T104 [US7] [P] Write integration test: `tests/integration/backtest.test.ts` for acceptance scenarios 1-5 including SC-008 performance
+- [X] T105 [US7] Create analysis hook: `src/features/analysis/hooks/useBacktest.ts` managing backtest state
+- [X] T106 [US7] Create backtest form: `src/features/analysis/components/BacktestForm/BacktestForm.tsx` for date range and rebalance frequency selection
+- [X] T107 [US7] Create results visualization: `src/features/analysis/components/PerformanceChart/PerformanceChart.tsx` with chart comparison
 
 ---
 
