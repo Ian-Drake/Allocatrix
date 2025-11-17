@@ -249,14 +249,14 @@ Set up database, authentication middleware, API base structure, and utilities. T
 
 ### Phase 6 Tasks
 
-- [ ] T063 [US4] Create Schwab API service: `src/backend/services/schwab-api.service.ts` with retry logic and circuit breaker for API calls
-- [ ] T064 [US4] Create positions service: `src/backend/services/positions.service.ts` for fetching and caching positions
-- [ ] T065 [US4] Create drift calculator: `src/backend/services/drift-calculator.service.ts` computing drift % for each ticker
-- [ ] T066 [US4] [P] Write unit test: `tests/unit/account/drift-calculator.test.ts` for drift calculation (Red-Green-Refactor)
-- [ ] T067 [US4] Create API endpoint: `src/pages/api/accounts/[id]/positions.ts` that fetches and caches positions
-- [ ] T068 [US4] Create API endpoint: `src/pages/api/accounts/[id]/drift.ts` that calculates drift for assigned model
-- [ ] T069 [US4] Create API endpoint: `src/pages/api/accounts/[id]/refresh-positions.ts` that manually refreshes position cache
-- [ ] T070 [US4] [P] Write integration test: `tests/integration/positions-display.test.ts` for acceptance scenarios 1-5 including performance tests
+- [X] T063 [US4] Create Schwab API service: `src/backend/services/schwab-api.service.ts` with retry logic and circuit breaker for API calls
+- [X] T064 [US4] Create positions service: `src/backend/services/positions.service.ts` for fetching and caching positions
+- [X] T065 [US4] Create drift calculator: `src/backend/services/drift-calculator.service.ts` computing drift % for each ticker
+- [X] T066 [US4] [P] Write unit test: `tests/unit/account/drift-calculator.test.ts` for drift calculation (Red-Green-Refactor)
+- [X] T067 [US4] Create API endpoint: `src/pages/api/accounts/[id]/positions.ts` that fetches and caches positions
+- [X] T068 [US4] Create API endpoint: `src/pages/api/accounts/[id]/drift.ts` that calculates drift for assigned model
+- [X] T069 [US4] Create API endpoint: `src/pages/api/accounts/[id]/refresh-positions.ts` that manually refreshes position cache
+- [X] T070 [US4] [P] Write integration test: `tests/integration/positions-display.test.ts` for acceptance scenarios 1-5 including performance tests
 - [ ] T071 [US4] [P] Write contract test validating position/drift endpoints
 - [ ] T072 [US4] Create positions hook: `src/features/account-management/hooks/useAccountPositions.ts` fetching and managing position state
 - [ ] T073 [US4] Create drift hook: `src/features/account-management/hooks/useAccountDrift.ts` calculating and displaying drift
