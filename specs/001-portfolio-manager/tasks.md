@@ -257,10 +257,10 @@ Set up database, authentication middleware, API base structure, and utilities. T
 - [X] T068 [US4] Create API endpoint: `src/pages/api/accounts/[id]/drift.ts` that calculates drift for assigned model
 - [X] T069 [US4] Create API endpoint: `src/pages/api/accounts/[id]/refresh-positions.ts` that manually refreshes position cache
 - [X] T070 [US4] [P] Write integration test: `tests/integration/positions-display.test.ts` for acceptance scenarios 1-5 including performance tests
-- [ ] T071 [US4] [P] Write contract test validating position/drift endpoints
-- [ ] T072 [US4] Create positions hook: `src/features/account-management/hooks/useAccountPositions.ts` fetching and managing position state
-- [ ] T073 [US4] Create drift hook: `src/features/account-management/hooks/useAccountDrift.ts` calculating and displaying drift
-- [ ] T074 [US4] Create positions table component: `src/features/account-management/components/PositionsTable/PositionsTable.tsx` with highlight for drift >5%
+- [X] T071 [US4] [P] Write contract test: `tests/contract/position-contract.test.ts` validating position/drift endpoints against openapi schemas
+- [X] T072 [US4] Create positions hook: `src/features/account-management/hooks/useAccountPositions.ts` fetching and managing position state
+- [X] T073 [US4] Create drift hook: `src/features/account-management/hooks/useAccountDrift.ts` calculating and displaying drift
+- [X] T074 [US4] Create positions table component: `src/features/account-management/components/PositionsTable/PositionsTable.tsx` with highlight for drift >5%
 
 ---
 
