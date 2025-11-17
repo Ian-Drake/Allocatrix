@@ -7,6 +7,7 @@ import migration006 from './006-create-schwab-tokens';
 import migration007 from './007-create-account-snapshots';
 import migration008 from './008-create-audit-log';
 import migration009 from './009-create-backtest-results';
+import migration010 from './010-add-account-value-columns';
 
 export const migrations = [
   migration001,
@@ -18,4 +19,5 @@ export const migrations = [
   migration007,
   migration008,
   migration009,
+  migration010,
 ];

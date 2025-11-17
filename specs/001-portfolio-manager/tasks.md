@@ -135,20 +135,20 @@ Set up database, authentication middleware, API base structure, and utilities. T
 
 ### Phase 3 Tasks
 
-- [ ] T021 [US1] Create auth service: `src/backend/services/auth.service.ts` with Schwab OAuth configuration and token exchange
-- [ ] T022 [US1] Create token refresh middleware: `src/backend/middleware/token-refresh.middleware.ts` that checks token expiry and refreshes if needed
-- [ ] T023 [US1] Create auth guard middleware: `src/backend/middleware/auth-guard.ts` that validates session and ensures user is authenticated
-- [ ] T024 [US1] Create API endpoint: `src/pages/api/auth/start.ts` that generates OAuth URL and redirects user to Schwab
-- [ ] T025 [US1] Create API endpoint: `src/pages/api/auth/callback.ts` that handles OAuth callback, exchanges code for tokens, encrypts and stores
-- [ ] T026 [US1] Create API endpoint: `src/pages/api/auth/refresh-token.ts` that refreshes expired tokens using refresh token
-- [ ] T027 [US1] Create API endpoint: `src/pages/api/auth/logout.ts` that clears session cookie and invalidates token
-- [ ] T028 [US1] Create session middleware: `src/backend/middleware/session.middleware.ts` with HTTP-only cookie configuration
-- [ ] T029 [US1] [P] Write integration test: `tests/integration/oauth-flow.test.ts` for acceptance scenario 1-5 (redirect, callback, token exchange, refresh, expiry)
-- [ ] T030 [US1] [P] Write contract test: `tests/contract/auth-contract.test.ts` validating /api/auth/* endpoints against auth-apis.openapi.yaml
-- [ ] T031 [US1] Create auth service in frontend: `src/features/auth/services/auth.service.ts` with endpoints for login/logout
-- [ ] T032 [US1] Create auth hook: `src/features/auth/hooks/useAuth.ts` managing authentication state with Zustand store
-- [ ] T033 [US1] Create LoginButton component: `src/features/auth/components/LoginButton/LoginButton.tsx` that initiates OAuth flow
-- [ ] T034 [US1] Create login page: `src/pages/login.tsx` with LoginButton and OAuth callback handler
+- [X] T021 [US1] Create auth service: `src/backend/services/auth.service.ts` with Schwab OAuth configuration and token exchange
+- [X] T022 [US1] Create token refresh middleware: `src/backend/middleware/token-refresh.middleware.ts` that checks token expiry and refreshes if needed
+- [X] T023 [US1] Create auth guard middleware: `src/backend/middleware/auth-guard.ts` that validates session and ensures user is authenticated
+- [X] T024 [US1] Create API endpoint: `src/pages/api/auth/start.ts` that generates OAuth URL and redirects user to Schwab
+- [X] T025 [US1] Create API endpoint: `src/pages/api/auth/callback.ts` that handles OAuth callback, exchanges code for tokens, encrypts and stores
+- [X] T026 [US1] Create API endpoint: `src/pages/api/auth/refresh-token.ts` that refreshes expired tokens using refresh token
+- [X] T027 [US1] Create API endpoint: `src/pages/api/auth/logout.ts` that clears session cookie and invalidates token
+- [X] T028 [US1] Create session middleware: `src/backend/middleware/session.middleware.ts` with HTTP-only cookie configuration
+- [X] T029 [US1] [P] Write integration test: `tests/integration/oauth-flow.test.ts` for acceptance scenario 1-5 (redirect, callback, token exchange, refresh, expiry)
+- [X] T030 [US1] [P] Write contract test: `tests/contract/auth-contract.test.ts` validating /api/auth/* endpoints against auth-apis.openapi.yaml
+- [X] T031 [US1] Create auth service in frontend: `src/features/auth/services/auth.service.ts` with endpoints for login/logout
+- [X] T032 [US1] Create auth hook: `src/features/auth/hooks/useAuth.ts` managing authentication state with Zustand store
+- [X] T033 [US1] Create LoginButton component: `src/features/auth/components/LoginButton/LoginButton.tsx` that initiates OAuth flow
+- [X] T034 [US1] Create login page: `src/pages/login.tsx` with LoginButton and OAuth callback handler
 
 ---
 
@@ -174,24 +174,24 @@ Set up database, authentication middleware, API base structure, and utilities. T
 
 ### Phase 4 Tasks
 
-- [ ] T035 [US2] Create portfolio validation service: `src/backend/services/portfolio-validation.service.ts` with weight sum checks and tolerance logic
-- [ ] T036 [US2] Create portfolio service: `src/backend/services/portfolio.service.ts` with CRUD, state transition, and cloning logic
-- [ ] T037 [US2] [P] Write unit test: `tests/unit/portfolio/portfolio-validation.test.ts` for weight sum validation (TDD: Red-Green-Refactor)
-- [ ] T038 [US2] [P] Write unit test: `tests/unit/portfolio/portfolio-state-machine.test.ts` for state transitions (Draft → Valid → Locked)
-- [ ] T039 [US2] Create API endpoint: `src/pages/api/portfolios/create.ts` that creates Draft portfolio
-- [ ] T040 [US2] Create API endpoint: `src/pages/api/portfolios/list.ts` that retrieves all portfolios with state
-- [ ] T041 [US2] Create API endpoint: `src/pages/api/portfolios/[id].ts` that retrieves, updates, and deletes portfolio
-- [ ] T042 [US2] Create API endpoint: `src/pages/api/portfolios/[id]/validate.ts` that validates portfolio and transitions to Valid
-- [ ] T043 [US2] Create API endpoint: `src/pages/api/portfolios/[id]/clone.ts` that clones locked portfolio to new Draft
-- [ ] T044 [US2] Create API endpoint: `src/pages/api/portfolios/[id]/asset-classes.ts` for managing Asset Classes within portfolio
-- [ ] T045 [US2] Create API endpoint: `src/pages/api/portfolios/[id]/tickers.ts` for managing ticker allocations
-- [ ] T046 [US2] [P] Write integration test: `tests/integration/portfolio-creation.test.ts` for acceptance scenarios 1-6
-- [ ] T047 [US2] [P] Write contract test: `tests/contract/portfolio-contract.test.ts` validating portfolio endpoints against portfolio-apis.openapi.yaml
-- [ ] T048 [US2] Create portfolio store: `src/features/portfolio-management/services/portfolio.store.ts` with Zustand for state management
-- [ ] T049 [US2] Create portfolio form component: `src/features/portfolio-management/components/PortfolioForm/PortfolioForm.tsx` with name/description inputs
-- [ ] T050 [US2] Create asset class editor component: `src/features/portfolio-management/components/AssetClassEditor/AssetClassEditor.tsx` for managing asset classes and weights
-- [ ] T051 [US2] Create ticker allocator component: `src/features/portfolio-management/components/TickerAllocator/TickerAllocator.tsx` for managing tickers within classes
-- [ ] T052 [US2] Create portfolio pages: `src/pages/portfolios/index.tsx` (list) and `src/pages/portfolios/[id].tsx` (edit)
+- [X] T035 [US2] Create portfolio validation service: `src/backend/services/portfolio-validation.service.ts` with weight sum checks and tolerance logic
+- [X] T036 [US2] Create portfolio service: `src/backend/services/portfolio.service.ts` with CRUD, state transition, and cloning logic
+- [X] T037 [US2] [P] Write unit test: `tests/unit/portfolio/portfolio-validation.test.ts` for weight sum validation (TDD: Red-Green-Refactor)
+- [X] T038 [US2] [P] Write unit test: `tests/unit/portfolio/portfolio-state-machine.test.ts` for state transitions (Draft → Valid → Locked)
+- [X] T039 [US2] Create API endpoint: `src/pages/api/portfolios/create.ts` that creates Draft portfolio
+- [X] T040 [US2] Create API endpoint: `src/pages/api/portfolios/list.ts` that retrieves all portfolios with state
+- [X] T041 [US2] Create API endpoint: `src/pages/api/portfolios/[id].ts` that retrieves, updates, and deletes portfolio
+- [X] T042 [US2] Create API endpoint: `src/pages/api/portfolios/[id]/validate.ts` that validates portfolio and transitions to Valid
+- [X] T043 [US2] Create API endpoint: `src/pages/api/portfolios/[id]/clone.ts` that clones locked portfolio to new Draft
+- [X] T044 [US2] Create API endpoint: `src/pages/api/portfolios/[id]/asset-classes.ts` for managing Asset Classes within portfolio
+- [X] T045 [US2] Create API endpoint: `src/pages/api/portfolios/[id]/tickers.ts` for managing ticker allocations
+- [X] T046 [US2] [P] Write integration test: `tests/integration/portfolio-creation.test.ts` for acceptance scenarios 1-6
+- [X] T047 [US2] [P] Write contract test: `tests/contract/portfolio-contract.test.ts` validating portfolio endpoints against portfolio-apis.openapi.yaml
+- [X] T048 [US2] Create portfolio store: `src/features/portfolio-management/services/portfolio.store.ts` with Zustand for state management
+- [X] T049 [US2] Create portfolio form component: `src/features/portfolio-management/components/PortfolioForm/PortfolioForm.tsx` with name/description inputs
+- [X] T050 [US2] Create asset class editor component: `src/features/portfolio-management/components/AssetClassEditor/AssetClassEditor.tsx` for managing asset classes and weights
+- [X] T051 [US2] Create ticker allocator component: `src/features/portfolio-management/components/TickerAllocator/TickerAllocator.tsx` for managing tickers within classes
+- [X] T052 [US2] Create portfolio pages: `src/pages/portfolios/index.tsx` (list) and `src/pages/portfolios/[id].tsx` (edit)
 
 ---
 
@@ -215,16 +215,16 @@ Set up database, authentication middleware, API base structure, and utilities. T
 
 ### Phase 5 Tasks
 
-- [ ] T053 [US3] Create account service: `src/backend/services/account.service.ts` with account management and model assignment
-- [ ] T054 [US3] Create API endpoint: `src/pages/api/accounts/list.ts` that retrieves Schwab accounts via OAuth
-- [ ] T055 [US3] Create API endpoint: `src/pages/api/accounts/[id].ts` that retrieves account details and assignment
-- [ ] T056 [US3] Create API endpoint: `src/pages/api/accounts/[id]/assign-model.ts` that assigns model and locks it
-- [ ] T057 [US3] [P] Write integration test: `tests/integration/portfolio-assignment.test.ts` for acceptance scenarios 1-5
-- [ ] T058 [US3] [P] Write contract test: `tests/contract/account-contract.test.ts` validating account endpoints
-- [ ] T059 [US3] Create account store: `src/features/account-management/services/account.store.ts` with Zustand
-- [ ] T060 [US3] Create account card component: `src/features/account-management/components/AccountCard/AccountCard.tsx` displaying account and model assignment
-- [ ] T061 [US3] Create model selector component: `src/features/account-management/components/ModelSelector/ModelSelector.tsx` for assigning model to account
-- [ ] T062 [US3] Create account pages: `src/pages/accounts/index.tsx` (list) and `src/pages/accounts/[id].tsx` (detail with assignment)
+- [X] T053 [US3] Create account service: `src/backend/services/account.service.ts` with account management and model assignment
+- [X] T054 [US3] Create API endpoint: `src/pages/api/accounts/list.ts` that retrieves Schwab accounts via OAuth
+- [X] T055 [US3] Create API endpoint: `src/pages/api/accounts/[id].ts` that retrieves account details and assignment
+- [X] T056 [US3] Create API endpoint: `src/pages/api/accounts/[id]/assign-model.ts` that assigns model and locks it
+- [X] T057 [US3] [P] Write integration test: `tests/integration/portfolio-assignment.test.ts` for acceptance scenarios 1-5
+- [X] T058 [US3] [P] Write contract test: `tests/contract/account-contract.test.ts` validating account endpoints
+- [X] T059 [US3] Create account store: `src/features/account-management/services/account.store.ts` with Zustand
+- [X] T060 [US3] Create account card component: `src/features/account-management/components/AccountCard/AccountCard.tsx` displaying account and model assignment
+- [X] T061 [US3] Create model selector component: `src/features/account-management/components/ModelSelector/ModelSelector.tsx` for assigning model to account
+- [X] T062 [US3] Create account pages: `src/pages/accounts/index.tsx` (list) and `src/pages/accounts/[id].tsx` (detail with assignment)
 
 ---
 

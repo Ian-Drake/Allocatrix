@@ -1,7 +1,11 @@
 {
   "compilerOptions": {
     "target": "ES2020",
-    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "lib": [
+      "ES2020",
+      "DOM",
+      "DOM.Iterable"
+    ],
     "jsx": "preserve",
     "module": "ESNext",
     "moduleResolution": "bundler",
@@ -26,19 +30,38 @@
     "declarationMap": true,
     "sourceMap": true,
     "outDir": "./dist",
-    "rootDir": "./src",
+    "rootDir": ".",
     "baseUrl": "./src",
     "paths": {
-      "@/*": ["*"],
-      "@/features/*": ["features/*"],
-      "@/shared/*": ["shared/*"],
-      "@/backend/*": ["backend/*"],
-      "@/pages/*": ["pages/*"]
+      "@/*": [
+        "*"
+      ],
+      "@/features/*": [
+        "features/*"
+      ],
+      "@/shared/*": [
+        "shared/*"
+      ],
+      "@/backend/*": [
+        "backend/*"
+      ],
+      "@/pages/*": [
+        "pages/*"
+      ]
     },
-    "incremental": true
+    "incremental": true,
+    "noEmit": true,
+    "isolatedModules": true
   },
-  "include": ["src", "tests"],
-  "exclude": ["node_modules", "dist", "build"],
+  "include": [
+    "src",
+    "tests"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "build"
+  ],
   "ts-node": {
     "compilerOptions": {
       "module": "commonjs"
