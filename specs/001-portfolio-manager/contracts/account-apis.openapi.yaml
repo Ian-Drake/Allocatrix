@@ -1,0 +1,696 @@
+openapi: 3.0.0
+info:
+  title: Model Portfolio Account Manager - Account API
+  version: 1.0.0
+  description: Account management endpoints for linking Schwab accounts, viewing positions, and calculating drift
+servers:
+  - url: http://localhost:3000/api
+    description: Local development server
+  - url: https://allocatrix.app/api
+    description: Production server
+paths:
+  /accounts:
+    get:
+      summary: List all linked accounts
+      description: Retrieve all Schwab accounts linked via OAuth
+      tags:
+        - Accounts
+      operationId: listAccounts
+      security:
+        - sessionCookie: []
+      responses:
+        '200':
+          description: List of linked accounts
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Account'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          description: Failed to fetch accounts from Schwab
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  
+  /accounts/{accountId}:
+    get:
+      summary: Get account details
+      description: Retrieve specific account with current positions, drift, and model assignment
+      tags:
+        - Accounts
+      operationId: getAccount
+      security:
+        - sessionCookie: []
+      parameters:
+        - name: accountId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Account details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccountDetail'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    
+    put:
+      summary: Update account
+      description: Update account nickname and/or model portfolio assignment
+      tags:
+        - Accounts
+      operationId: updateAccount
+      security:
+        - sessionCookie: []
+      parameters:
+        - name: accountId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                nickname:
+                  type: string
+                  maxLength: 255
+                  example: "Main Trading Account"
+                assignedModelPortfolioId:
+                  type: string
+                  format: uuid
+                  nullable: true
+                  description: Assign or reassign model portfolio (null to unassign)
+      responses:
+        '200':
+          description: Account updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Account'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Cannot assign non-Valid portfolio
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  
+  /accounts/{accountId}/positions:
+    get:
+      summary: Get account positions
+      description: Fetch current positions from Schwab for this account
+      tags:
+        - Accounts
+      operationId: getAccountPositions
+      security:
+        - sessionCookie: []
+      parameters:
+        - name: accountId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: useCache
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: true
+          description: Use cached positions if available and recent (within 5 min)
+      responses:
+        '200':
+          description: Account positions
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - positions
+                  - totalAccountValue
+                  - availableCash
+                  - lastUpdated
+                  - isCached
+                properties:
+                  positions:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Position'
+                  totalAccountValue:
+                    type: number
+                    format: double
+                    example: 100000.00
+                  availableCash:
+                    type: number
+                    format: double
+                    example: 5000.00
+                  lastUpdated:
+                    type: string
+                    format: date-time
+                  isCached:
+                    type: boolean
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          description: Failed to fetch positions from Schwab
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  
+  /accounts/{accountId}/drift:
+    get:
+      summary: Calculate portfolio drift
+      description: Compare current positions to assigned model portfolio target allocation
+      tags:
+        - Accounts
+      operationId: getPortfolioDrift
+      security:
+        - sessionCookie: []
+      parameters:
+        - name: accountId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Portfolio drift analysis
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - drifts
+                  - lastCalculatedAt
+                properties:
+                  drifts:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/DriftAnalysis'
+                  lastCalculatedAt:
+                    type: string
+                    format: date-time
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Account has no assigned model portfolio
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          description: Failed to calculate drift
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  
+  /accounts/{accountId}/deploy-cash:
+    post:
+      summary: Deploy available cash to underweight positions
+      description: Calculate and propose cash deployment trades to underweight tickers. Returns preview for confirmation.
+      tags:
+        - Accounts
+      operationId: proposeCashDeployment
+      security:
+        - sessionCookie: []
+      parameters:
+        - name: accountId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reserveAmount:
+                  type: number
+                  format: double
+                  description: Amount to reserve (overrides default)
+                  example: 2000.00
+      responses:
+        '200':
+          description: Cash deployment proposal
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - trades
+                  - projectedAllocation
+                  - estimatedCommission
+                  - availableForDeployment
+                properties:
+                  trades:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ProposedTrade'
+                  projectedAllocation:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AllocationComparison'
+                  estimatedCommission:
+                    type: number
+                    format: double
+                  availableForDeployment:
+                    type: number
+                    format: double
+                  totalDeploymentAmount:
+                    type: number
+                    format: double
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: No assigned model or no underweight positions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          description: Failed to calculate deployment
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  
+  /accounts/{accountId}/deploy-cash/execute:
+    post:
+      summary: Execute cash deployment trades
+      description: Submit calculated cash deployment trades to Schwab and record in audit log
+      tags:
+        - Accounts
+      operationId: executeCashDeployment
+      security:
+        - sessionCookie: []
+      parameters:
+        - name: accountId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - trades
+              properties:
+                trades:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/ProposedTrade'
+      responses:
+        '202':
+          description: Cash deployment submitted, trades pending execution
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - auditLogId
+                  - status
+                  - submittedAt
+                properties:
+                  auditLogId:
+                    type: string
+                    format: uuid
+                  status:
+                    type: string
+                    enum: [pending, executed, failed]
+                  submittedAt:
+                    type: string
+                    format: date-time
+                  trades:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        symbol:
+                          type: string
+                        quantity:
+                          type: number
+                        orderType:
+                          type: string
+                        status:
+                          type: string
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          description: Failed to submit trades to Schwab
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  
+  /accounts/{accountId}/rebalance:
+    post:
+      summary: Calculate full rebalance trades
+      description: Propose full rebalance (sell overweight, buy underweight) to match model allocation. Returns preview.
+      tags:
+        - Accounts
+      operationId: proposeRebalance
+      security:
+        - sessionCookie: []
+      parameters:
+        - name: accountId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Rebalance proposal
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - trades
+                  - projectedAllocation
+                  - estimatedCommission
+                properties:
+                  trades:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ProposedTrade'
+                  projectedAllocation:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AllocationComparison'
+                  estimatedCommission:
+                    type: number
+                    format: double
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: No assigned model portfolio
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          description: Failed to calculate rebalance
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  
+  /accounts/{accountId}/rebalance/execute:
+    post:
+      summary: Execute full rebalance trades
+      description: Submit calculated rebalance trades to Schwab as batch transaction
+      tags:
+        - Accounts
+      operationId: executeRebalance
+      security:
+        - sessionCookie: []
+      parameters:
+        - name: accountId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - trades
+              properties:
+                trades:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/ProposedTrade'
+      responses:
+        '202':
+          description: Rebalance submitted, trades pending execution
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - auditLogId
+                  - status
+                  - submittedAt
+                properties:
+                  auditLogId:
+                    type: string
+                    format: uuid
+                  status:
+                    type: string
+                    enum: [pending, executed, failed]
+                  submittedAt:
+                    type: string
+                    format: date-time
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          description: Failed to submit trades to Schwab
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+components:
+  schemas:
+    Account:
+      type: object
+      required:
+        - id
+        - nickname
+        - createdAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        nickname:
+          type: string
+          example: "Main Brokerage"
+        assignedModelPortfolioId:
+          type: string
+          format: uuid
+          nullable: true
+        assignedModelPortfolioName:
+          type: string
+          nullable: true
+          example: "60/40 Growth Portfolio"
+        lastSyncedAt:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+    
+    AccountDetail:
+      allOf:
+        - $ref: '#/components/schemas/Account'
+        - type: object
+          properties:
+            positions:
+              type: array
+              items:
+                $ref: '#/components/schemas/Position'
+            totalAccountValue:
+              type: number
+              format: double
+            availableCash:
+              type: number
+              format: double
+    
+    Position:
+      type: object
+      required:
+        - symbol
+        - quantity
+        - currentPrice
+        - currentValue
+        - currentAllocationPct
+      properties:
+        symbol:
+          type: string
+          example: "AAPL"
+        displayName:
+          type: string
+          nullable: true
+          example: "Apple Inc."
+        quantity:
+          type: number
+          format: double
+          example: 10.5
+        currentPrice:
+          type: number
+          format: double
+          example: 234.56
+        currentValue:
+          type: number
+          format: double
+          example: 2463.36
+        currentAllocationPct:
+          type: number
+          format: double
+          example: 2.46
+    
+    DriftAnalysis:
+      type: object
+      required:
+        - symbol
+        - currentAllocationPct
+        - targetAllocationPct
+        - driftPct
+        - status
+      properties:
+        symbol:
+          type: string
+          example: "AAPL"
+        currentAllocationPct:
+          type: number
+          format: double
+          example: 5.2
+        targetAllocationPct:
+          type: number
+          format: double
+          example: 30.0
+        driftPct:
+          type: number
+          format: double
+          description: Current % - Target %
+          example: -24.8
+        status:
+          type: string
+          enum: [aligned, overweight, underweight]
+          description: Status based on 5% drift threshold
+    
+    ProposedTrade:
+      type: object
+      required:
+        - symbol
+        - quantity
+        - orderType
+      properties:
+        symbol:
+          type: string
+          example: "AAPL"
+        quantity:
+          type: number
+          format: double
+          description: Positive = buy, negative = sell
+          example: 10
+        orderType:
+          type: string
+          enum: [MARKET, LIMIT]
+          example: "MARKET"
+        estimatedPrice:
+          type: number
+          format: double
+          nullable: true
+        estimatedValue:
+          type: number
+          format: double
+          nullable: true
+    
+    AllocationComparison:
+      type: object
+      required:
+        - symbol
+        - currentAllocationPct
+        - projectedAllocationPct
+        - targetAllocationPct
+      properties:
+        symbol:
+          type: string
+          example: "AAPL"
+        currentAllocationPct:
+          type: number
+          format: double
+        projectedAllocationPct:
+          type: number
+          format: double
+        targetAllocationPct:
+          type: number
+          format: double
+    
+    Error:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: string
+          description: Error code
+        message:
+          type: string
+          description: Human-readable error message
+  
+  responses:
+    BadRequest:
+      description: Invalid request body or parameters
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    
+    Unauthorized:
+      description: Not authenticated or session expired
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'

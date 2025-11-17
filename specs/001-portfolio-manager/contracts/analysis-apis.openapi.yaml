@@ -1,0 +1,305 @@
+openapi: 3.0.0
+info:
+  title: Model Portfolio Account Manager - Analysis API
+  version: 1.0.0
+  description: Historical backtesting and analysis endpoints
+servers:
+  - url: http://localhost:3000/api
+    description: Local development server
+  - url: https://allocatrix.app/api
+    description: Production server
+paths:
+  /analysis/backtest:
+    post:
+      summary: Run portfolio backtest
+      description: Run historical backtest on a model portfolio with specified date range and rebalance frequency
+      tags:
+        - Analysis
+      operationId: runBacktest
+      security:
+        - sessionCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - modelPortfolioId
+                - startDate
+                - endDate
+                - rebalanceFrequency
+              properties:
+                modelPortfolioId:
+                  type: string
+                  format: uuid
+                startDate:
+                  type: string
+                  format: date
+                  example: "2020-01-01"
+                endDate:
+                  type: string
+                  format: date
+                  example: "2025-01-01"
+                rebalanceFrequency:
+                  type: string
+                  enum: [MONTHLY, QUARTERLY, ANNUAL]
+                  example: "QUARTERLY"
+      responses:
+        '200':
+          description: Backtest completed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BacktestResult'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          description: Invalid backtest parameters (e.g., start date > end date)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Failed to run backtest (e.g., historical data unavailable)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    
+    get:
+      summary: List backtests
+      description: Retrieve cached backtest results
+      tags:
+        - Analysis
+      operationId: listBacktests
+      security:
+        - sessionCookie: []
+      parameters:
+        - name: modelPortfolioId
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+          description: Filter by model portfolio
+      responses:
+        '200':
+          description: List of backtests
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/BacktestSummary'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  
+  /analysis/backtest/{backtestId}:
+    get:
+      summary: Get backtest results
+      description: Retrieve detailed backtest results including monthly performance and drawdown
+      tags:
+        - Analysis
+      operationId: getBacktest
+      security:
+        - sessionCookie: []
+      parameters:
+        - name: backtestId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Backtest details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BacktestResult'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    
+    delete:
+      summary: Delete backtest
+      description: Delete cached backtest result
+      tags:
+        - Analysis
+      operationId: deleteBacktest
+      security:
+        - sessionCookie: []
+      parameters:
+        - name: backtestId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Backtest deleted
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+components:
+  schemas:
+    BacktestSummary:
+      type: object
+      required:
+        - id
+        - modelPortfolioId
+        - modelPortfolioName
+        - startDate
+        - endDate
+        - rebalanceFrequency
+        - totalReturn
+        - annualizedReturn
+        - volatility
+        - sharpeRatio
+        - maxDrawdown
+        - createdAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        modelPortfolioId:
+          type: string
+          format: uuid
+        modelPortfolioName:
+          type: string
+        startDate:
+          type: string
+          format: date
+        endDate:
+          type: string
+          format: date
+        rebalanceFrequency:
+          type: string
+          enum: [MONTHLY, QUARTERLY, ANNUAL]
+        totalReturn:
+          type: number
+          format: double
+          description: Total return percentage over period
+          example: 127.45
+        annualizedReturn:
+          type: number
+          format: double
+          description: Annualized return percentage
+          example: 17.32
+        volatility:
+          type: number
+          format: double
+          description: Annualized volatility (standard deviation)
+          example: 12.50
+        sharpeRatio:
+          type: number
+          format: double
+          description: Sharpe ratio (return per unit of risk)
+          example: 1.38
+        maxDrawdown:
+          type: number
+          format: double
+          description: Maximum peak-to-trough decline percentage
+          example: -24.56
+        createdAt:
+          type: string
+          format: date-time
+    
+    BacktestResult:
+      allOf:
+        - $ref: '#/components/schemas/BacktestSummary'
+        - type: object
+          required:
+            - monthlyReturns
+            - drawdownChart
+            - allocationHistory
+          properties:
+            monthlyReturns:
+              type: array
+              items:
+                type: object
+                properties:
+                  date:
+                    type: string
+                    format: date
+                  returnPct:
+                    type: number
+                    format: double
+                  portfolioValue:
+                    type: number
+                    format: double
+            drawdownChart:
+              type: array
+              items:
+                type: object
+                properties:
+                  date:
+                    type: string
+                    format: date
+                  drawdownPct:
+                    type: number
+                    format: double
+            allocationHistory:
+              type: array
+              items:
+                type: object
+                properties:
+                  date:
+                    type: string
+                    format: date
+                  rebalanced:
+                    type: boolean
+                  allocations:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        symbol:
+                          type: string
+                        allocationPct:
+                          type: number
+                          format: double
+    
+    Error:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: string
+          description: Error code
+        message:
+          type: string
+          description: Human-readable error message
+  
+  responses:
+    BadRequest:
+      description: Invalid request body or parameters
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    
+    Unauthorized:
+      description: Not authenticated or session expired
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'

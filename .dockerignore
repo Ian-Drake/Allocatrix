@@ -1,0 +1,66 @@
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# Dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Development
+.env
+.env.local
+.env.*.local
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+*.sublime-workspace
+*.sublime-project
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build
+dist/
+build/
+.next/
+out/
+coverage/
+
+# Test
+tests/
+*.test.ts
+*.test.tsx
+*.spec.ts
+*.spec.tsx
+vitest.config.ts
+jest.config.js
+
+# Specs and docs
+specs/
+SchwabApiSpecs/
+.github/
+.specify/
+
+# Misc
+.cache/
+*.min.js
+*.min.css
+
+# Database
+data/
+*.db
+
+# Logs
+*.log

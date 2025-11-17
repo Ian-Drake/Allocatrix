@@ -1,0 +1,67 @@
+# Development
+src/
+tests/
+specs/
+.github/
+.specify/
+SchwabApiSpecs/
+
+# Build and dist
+dist/
+build/
+.next/
+out/
+
+# Configuration
+tsconfig.json
+.eslintrc.json
+.prettierrc.json
+next.config.js
+vitest.config.ts
+jest.config.js
+
+# Test and coverage
+coverage/
+*.test.ts
+*.test.tsx
+*.spec.ts
+*.spec.tsx
+
+# Version control
+.git/
+.gitignore
+.gitattributes
+
+# IDE and OS
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Dependencies
+node_modules/
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Database
+*.db
+data/
+
+# Misc
+.cache/
+*.min.js
+*.min.css
