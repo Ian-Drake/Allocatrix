@@ -10,12 +10,12 @@ import type { ChartDataPoint, Timeframe } from '../types/portfolio-dashboard.typ
  * Transform raw API data into Recharts format
  * 
  * @param rawData - Raw data points from API
- * @param timeframe - Selected timeframe (used for context, not transformation)
+ * @param _timeframe - Selected timeframe (used for context, not transformation)
  * @returns Array of chart data points in Recharts format
  */
 export function transformChartData(
   rawData: Array<{ date: string; value: number }>,
-  timeframe: Timeframe
+  _timeframe: Timeframe
 ): ChartDataPoint[] {
   if (!Array.isArray(rawData) || rawData.length === 0) {
     return [];

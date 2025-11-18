@@ -83,40 +83,40 @@ Web application structure from plan.md:
 
 ### Type Definitions for US1
 
-- [ ] T019 [P] [US1] Add PortfolioSummary, ChartDataPoint, and Timeframe type definitions to `src/features/portfolio-dashboard/types/portfolio-dashboard.types.ts`
+- [X] T019 [P] [US1] Add PortfolioSummary, ChartDataPoint, and Timeframe type definitions to `src/features/portfolio-dashboard/types/portfolio-dashboard.types.ts`
 
 ### Utility Functions for US1
 
-- [ ] T020 [P] [US1] Implement `formatCurrency(value: number, precision?: number): string` in `src/features/portfolio-dashboard/utils/format-currency.ts`
-- [ ] T021 [P] [US1] Implement `formatPercentage(value: number, showSign?: boolean): string` in `src/features/portfolio-dashboard/utils/format-percentage.ts`
-- [ ] T022 [US1] Implement `transformChartData(rawData: any[], timeframe: Timeframe): ChartDataPoint[]` in `src/features/portfolio-dashboard/utils/chart-data-transform.ts` (transforms API response to Recharts format)
+- [X] T020 [P] [US1] Implement `formatCurrency(value: number, precision?: number): string` in `src/features/portfolio-dashboard/utils/format-currency.ts`
+- [X] T021 [P] [US1] Implement `formatPercentage(value: number, showSign?: boolean): string` in `src/features/portfolio-dashboard/utils/format-percentage.ts`
+- [X] T022 [US1] Implement `transformChartData(rawData: any[], timeframe: Timeframe): ChartDataPoint[]` in `src/features/portfolio-dashboard/utils/chart-data-transform.ts` (transforms API response to Recharts format)
 
 ### Custom Hooks for US1
 
-- [ ] T023 [P] [US1] Create `usePortfolioData()` hook in `src/features/portfolio-dashboard/hooks/usePortfolioData.ts` that:
+- [X] T023 [P] [US1] Create `usePortfolioData()` hook in `src/features/portfolio-dashboard/hooks/usePortfolioData.ts` that:
   - Fetches portfolio summary and chart data
   - Manages loading, error, and data state
   - Provides `refresh()` function for manual refresh
-- [ ] T024 [P] [US1] Create hook unit tests in `tests/unit/portfolio-dashboard/hooks/usePortfolioData.test.ts` (write tests first, expect failures)
+- [X] T024 [P] [US1] Create hook unit tests in `tests/unit/portfolio-dashboard/hooks/usePortfolioData.test.ts` (write tests first, expect failures)
 
 ### UI Components for US1
 
-- [ ] T025 [US1] Create PortfolioSummary component at `src/features/portfolio-dashboard/components/PortfolioSummary/PortfolioSummary.tsx` displaying:
+- [X] T025 [US1] Create PortfolioSummary component at `src/features/portfolio-dashboard/components/PortfolioSummary/PortfolioSummary.tsx` displaying:
   - Total portfolio value (large prominent text)
   - Daily gain/loss (amount + percentage with color coding)
   - Last refreshed timestamp
   - Refresh button
-- [ ] T026 [P] [US1] Create PortfolioSummary unit tests in `tests/unit/portfolio-dashboard/components/PortfolioSummary.test.tsx` (test formatting, refresh trigger)
-- [ ] T027 [US1] Create PerformanceChart component at `src/features/portfolio-dashboard/components/PerformanceChart/PerformanceChart.tsx` with:
+- [X] T026 [P] [US1] Create PortfolioSummary unit tests in `tests/unit/portfolio-dashboard/components/PortfolioSummary.test.tsx` (test formatting, refresh trigger)
+- [X] T027 [US1] Create PerformanceChart component at `src/features/portfolio-dashboard/components/PerformanceChart/PerformanceChart.tsx` with:
   - Recharts LineChart rendering chart data
   - Timeframe selector buttons (30/60/90/180/TTM)
   - Chart responsive to container size
   - Smooth transition animations on timeframe change
-- [ ] T028 [P] [US1] Create PerformanceChart unit tests in `tests/unit/portfolio-dashboard/components/PerformanceChart.test.tsx` (test rendering, timeframe switching)
+- [X] T028 [P] [US1] Create PerformanceChart unit tests in `tests/unit/portfolio-dashboard/components/PerformanceChart.test.tsx` (test rendering, timeframe switching)
 
 ### Integration Tests for US1
 
-- [ ] T029 [US1] Create integration test in `tests/integration/portfolio-dashboard/portfolio-overview.test.ts` that:
+- [X] T029 [US1] Create integration test in `tests/integration/portfolio-dashboard/portfolio-overview.test.ts` that:
   - Loads dashboard page
   - Verifies summary metrics display
   - Changes chart timeframe
@@ -125,7 +125,7 @@ Web application structure from plan.md:
 
 ### Main Dashboard Page Component for US1
 
-- [ ] T030 [US1] Create DashboardPage component at `src/features/portfolio-dashboard/pages/DashboardPage.tsx` that:
+- [X] T030 [US1] Create DashboardPage component at `src/features/portfolio-dashboard/pages/DashboardPage.tsx` that:
   - Uses `usePortfolioData()` hook
   - Renders PortfolioSummary component
   - Renders PerformanceChart component

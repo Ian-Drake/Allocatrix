@@ -1,6 +1,7 @@
 // Vitest setup file
 // This file is loaded before running tests
 
+import '@testing-library/jest-dom';
 import { runMigrations } from '@/backend/db/migrate';
 import { migrations } from '@/backend/db/migrations/index';
 
@@ -18,4 +19,5 @@ async function setupDatabase() {
 
 // Execute setup immediately when this file is loaded
 await setupDatabase();
+
 
