@@ -147,27 +147,27 @@ Web application structure from plan.md:
 
 ### Custom Hooks for US2
 
-- [ ] T032 [P] [US2] Create `useAccountsData()` hook in `src/features/portfolio-dashboard/hooks/useAccountsData.ts` that:
+- [X] T032 [P] [US2] Create `useAccountsData()` hook in `src/features/portfolio-dashboard/hooks/useAccountsData.ts` that:
   - Fetches accounts list
   - Manages loading, error, data state
   - Provides `refresh()` function
-- [ ] T033 [P] [US2] Create hook unit tests in `tests/unit/portfolio-dashboard/hooks/useAccountsData.test.ts`
+- [X] T033 [P] [US2] Create hook unit tests in `tests/unit/portfolio-dashboard/hooks/useAccountsData.test.ts`
 
 ### UI Components for US2
 
-- [ ] T034 [US2] Create AccountGrid component at `src/features/portfolio-dashboard/components/AccountGrid/AccountGrid.tsx` rendering:
+- [X] T034 [US2] Create AccountGrid component at `src/features/portfolio-dashboard/components/AccountGrid/AccountGrid.tsx` rendering:
   - Table with 6 columns (Account Name, Current Value, Today's Gain/Loss, Excess Cash, Correctable Drift, Total Drift)
   - One row per account with data
   - Checkbox column for row selection
   - Row hover highlighting
   - Virtual scrolling support (react-window) for 50+ accounts
   - Responsive column visibility on smaller viewports
-- [ ] T035 [P] [US2] Create AccountGridRow sub-component at `src/features/portfolio-dashboard/components/AccountGrid/AccountGridRow.tsx` for individual row rendering
-- [ ] T036 [P] [US2] Create AccountGrid unit tests in `tests/unit/portfolio-dashboard/components/AccountGrid.test.tsx` (test data display, formatting, column visibility)
+- [X] T035 [P] [US2] Create AccountGridRow sub-component at `src/features/portfolio-dashboard/components/AccountGrid/AccountGridRow.tsx` for individual row rendering
+- [X] T036 [P] [US2] Create AccountGrid unit tests in `tests/unit/portfolio-dashboard/components/AccountGrid.test.tsx` (test data display, formatting, column visibility)
 
 ### Integration Tests for US2
 
-- [ ] T037 [US2] Create integration test in `tests/integration/portfolio-dashboard/account-grid.test.ts` that:
+- [X] T037 [US2] Create integration test in `tests/integration/portfolio-dashboard/account-grid.test.ts` that:
   - Loads dashboard
   - Verifies account grid renders
   - Verifies all 6 columns display
@@ -176,7 +176,7 @@ Web application structure from plan.md:
 
 ### Update Dashboard Page for US2
 
-- [ ] T038 [US2] Update DashboardPage component at `src/features/portfolio-dashboard/pages/DashboardPage.tsx` to:
+- [X] T038 [US2] Update DashboardPage component at `src/features/portfolio-dashboard/pages/DashboardPage.tsx` to:
   - Import and render AccountGrid component
   - Wire up `useAccountsData()` hook
   - Pass refresh capability to grid
