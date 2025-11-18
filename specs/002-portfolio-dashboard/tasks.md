@@ -147,27 +147,27 @@ Web application structure from plan.md:
 
 ### Custom Hooks for US2
 
-- [ ] T032 [P] [US2] Create `useAccountsData()` hook in `src/features/portfolio-dashboard/hooks/useAccountsData.ts` that:
+- [X] T032 [P] [US2] Create `useAccountsData()` hook in `src/features/portfolio-dashboard/hooks/useAccountsData.ts` that:
   - Fetches accounts list
   - Manages loading, error, data state
   - Provides `refresh()` function
-- [ ] T033 [P] [US2] Create hook unit tests in `tests/unit/portfolio-dashboard/hooks/useAccountsData.test.ts`
+- [X] T033 [P] [US2] Create hook unit tests in `tests/unit/portfolio-dashboard/hooks/useAccountsData.test.ts`
 
 ### UI Components for US2
 
-- [ ] T034 [US2] Create AccountGrid component at `src/features/portfolio-dashboard/components/AccountGrid/AccountGrid.tsx` rendering:
+- [X] T034 [US2] Create AccountGrid component at `src/features/portfolio-dashboard/components/AccountGrid/AccountGrid.tsx` rendering:
   - Table with 6 columns (Account Name, Current Value, Today's Gain/Loss, Excess Cash, Correctable Drift, Total Drift)
   - One row per account with data
   - Checkbox column for row selection
   - Row hover highlighting
   - Virtual scrolling support (react-window) for 50+ accounts
   - Responsive column visibility on smaller viewports
-- [ ] T035 [P] [US2] Create AccountGridRow sub-component at `src/features/portfolio-dashboard/components/AccountGrid/AccountGridRow.tsx` for individual row rendering
-- [ ] T036 [P] [US2] Create AccountGrid unit tests in `tests/unit/portfolio-dashboard/components/AccountGrid.test.tsx` (test data display, formatting, column visibility)
+- [X] T035 [P] [US2] Create AccountGridRow sub-component at `src/features/portfolio-dashboard/components/AccountGrid/AccountGridRow.tsx` for individual row rendering
+- [X] T036 [P] [US2] Create AccountGrid unit tests in `tests/unit/portfolio-dashboard/components/AccountGrid.test.tsx` (test data display, formatting, column visibility)
 
 ### Integration Tests for US2
 
-- [ ] T037 [US2] Create integration test in `tests/integration/portfolio-dashboard/account-grid.test.ts` that:
+- [X] T037 [US2] Create integration test in `tests/integration/portfolio-dashboard/account-grid.test.ts` that:
   - Loads dashboard
   - Verifies account grid renders
   - Verifies all 6 columns display
@@ -176,7 +176,7 @@ Web application structure from plan.md:
 
 ### Update Dashboard Page for US2
 
-- [ ] T038 [US2] Update DashboardPage component at `src/features/portfolio-dashboard/pages/DashboardPage.tsx` to:
+- [X] T038 [US2] Update DashboardPage component at `src/features/portfolio-dashboard/pages/DashboardPage.tsx` to:
   - Import and render AccountGrid component
   - Wire up `useAccountsData()` hook
   - Pass refresh capability to grid
@@ -198,32 +198,32 @@ Web application structure from plan.md:
 
 ### Custom Hooks for US3
 
-- [ ] T040 [P] [US3] Create `useAccountSelection()` hook in `src/features/portfolio-dashboard/hooks/useAccountSelection.ts` that:
+- [X] T040 [P] [US3] Create `useAccountSelection()` hook in `src/features/portfolio-dashboard/hooks/useAccountSelection.ts` that:
   - Manages checkbox selection state for accounts
   - Provides `selectedAccountIds`, `isAccountSelected(id)`, `toggleAccount(id)`, `selectAll()`, `clearSelection()` methods
   - Is independent of component lifecycle
-- [ ] T041 [P] [US3] Create hook unit tests in `tests/unit/portfolio-dashboard/hooks/useAccountSelection.test.ts`
-- [ ] T042 [P] [US3] Create `useBulkActions()` hook in `src/features/portfolio-dashboard/hooks/useBulkActions.ts` that:
+- [X] T041 [P] [US3] Create hook unit tests in `tests/unit/portfolio-dashboard/hooks/useAccountSelection.test.ts`
+- [X] T042 [P] [US3] Create `useBulkActions()` hook in `src/features/portfolio-dashboard/hooks/useBulkActions.ts` that:
   - Orchestrates liquidate/rebalance/use-cash execution via services
   - Manages action state (loading, error, success)
   - Returns `executeLiquidate()`, `executeRebalance()`, `executeUseCash()` functions
   - Handles structured error responses with retry capability
-- [ ] T043 [P] [US3] Create hook unit tests in `tests/unit/portfolio-dashboard/hooks/useBulkActions.test.ts`
-- [ ] T044 [P] [US3] Create `useMarketHours()` hook in `src/features/portfolio-dashboard/hooks/useMarketHours.ts` that:
+- [X] T043 [P] [US3] Create hook unit tests in `tests/unit/portfolio-dashboard/hooks/useBulkActions.test.ts`
+- [X] T044 [P] [US3] Create `useMarketHours()` hook in `src/features/portfolio-dashboard/hooks/useMarketHours.ts` that:
   - Calls market hours service
   - Caches result for 1 hour
   - Provides `isOpen`, `isLoading`, `error` state
-- [ ] T045 [P] [US3] Create hook unit tests in `tests/unit/portfolio-dashboard/hooks/useMarketHours.test.ts`
+- [X] T045 [P] [US3] Create hook unit tests in `tests/unit/portfolio-dashboard/hooks/useMarketHours.test.ts`
 
 ### UI Components for US3
 
-- [ ] T046 [P] [US3] Create BulkActionBar component at `src/features/portfolio-dashboard/components/BulkActionBar/BulkActionBar.tsx` displaying:
+- [X] T046 [P] [US3] Create BulkActionBar component at `src/features/portfolio-dashboard/components/BulkActionBar/BulkActionBar.tsx` displaying:
   - Liquidate, Rebalance, Use Cash buttons
   - Buttons disabled if <1 account selected
   - Buttons enabled if >=1 account selected
   - Selection summary (e.g., "2 accounts selected")
-- [ ] T047 [P] [US3] Create BulkActionBar unit tests in `tests/unit/portfolio-dashboard/components/BulkActionBar.test.tsx`
-- [ ] T048 [US3] Create LiquidateConfirmDialog component at `src/features/portfolio-dashboard/components/LiquidateConfirmDialog/LiquidateConfirmDialog.tsx` implementing 3-step progressive dialog:
+- [X] T047 [P] [US3] Create BulkActionBar unit tests in `tests/unit/portfolio-dashboard/components/BulkActionBar.test.tsx`
+- [X] T048 [US3] Create LiquidateConfirmDialog component at `src/features/portfolio-dashboard/components/LiquidateConfirmDialog/LiquidateConfirmDialog.tsx` implementing 3-step progressive dialog:
   - Dialog 1: Intent confirmation (show selected accounts, confirm liquidation)
   - Dialog 2: Final confirmation (show impact details, confirm again)
   - Dialog 3 (conditional): Market closed warning (show if market closed or API fails, explain thin order book risk)
@@ -231,7 +231,7 @@ Web application structure from plan.md:
   - Execute liquidate after all confirmations pass
   - Handle errors and show retry option
 - [ ] T049 [P] [US3] Create LiquidateConfirmDialog unit tests in `tests/unit/portfolio-dashboard/components/LiquidateConfirmDialog.test.tsx` (test state machine, dialog flow)
-- [ ] T050 [US3] Create RebalanceConfirmDialog component at `src/features/portfolio-dashboard/components/RebalanceConfirmDialog/RebalanceConfirmDialog.tsx` with:
+- [X] T050 [US3] Create RebalanceConfirmDialog component at `src/features/portfolio-dashboard/components/RebalanceConfirmDialog/RebalanceConfirmDialog.tsx` with:
   - Single confirmation dialog asking to confirm rebalance
   - Show selected accounts and what will happen
   - Cancel or Confirm buttons
@@ -241,12 +241,12 @@ Web application structure from plan.md:
 
 ### Update AccountGrid for US3
 
-- [ ] T052 [US3] Update AccountGridRow component at `src/features/portfolio-dashboard/components/AccountGrid/AccountGridRow.tsx` to:
+- [X] T052 [US3] Update AccountGridRow component at `src/features/portfolio-dashboard/components/AccountGrid/AccountGridRow.tsx` to:
   - Add checkbox column at start of row
   - Connect checkbox to `useAccountSelection()` hook
   - Pass `isSelected` prop to control checkbox state
   - Pass `onToggle` callback to handle checkbox changes
-- [ ] T053 [US3] Update AccountGrid component to:
+- [X] T053 [US3] Update AccountGrid component to:
   - Accept `selectedAccountIds` and `onSelectionChange` props
   - Pass selection state to each AccountGridRow
   - Wire up `useAccountSelection()` hook
@@ -265,7 +265,7 @@ Web application structure from plan.md:
 
 ### Main Dashboard Page Update for US3
 
-- [ ] T055 [US3] Update DashboardPage component at `src/features/portfolio-dashboard/pages/DashboardPage.tsx` to:
+- [X] T055 [US3] Update DashboardPage component at `src/features/portfolio-dashboard/pages/DashboardPage.tsx` to:
   - Use `useAccountSelection()` hook
   - Use `useBulkActions()` hook
   - Use `useMarketHours()` hook
