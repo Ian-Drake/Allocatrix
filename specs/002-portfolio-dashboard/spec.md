@@ -87,7 +87,7 @@ As a portfolio manager, I need to select multiple accounts and perform bulk acti
 ### Functional Requirements
 
 - **FR-001**: Dashboard MUST display the total portfolio value across all accounts as a primary metric on page load
-- **FR-002**: Dashboard MUST display the current day's gain/loss percentage and amount alongside the total portfolio value
+- **FR-002**: Dashboard MUST display the current day's gain/loss percentage and amount alongside the total portfolio value, where "current day" is measured from the previous market close to the current time
 - **FR-003**: Dashboard MUST display an interactive chart showing portfolio value history for the last 30 days on initial page load
 - **FR-004**: Dashboard MUST provide controls to change the chart timeframe to: 30 days, 60 days, 90 days, 180 days, and TTM (trailing twelve months)
 - **FR-005**: Dashboard MUST display an account grid with one row per account
@@ -98,22 +98,32 @@ As a portfolio manager, I need to select multiple accounts and perform bulk acti
 - **FR-010**: When one or more accounts are selected, action buttons MUST become enabled and visible
 - **FR-011**: Liquidate action MUST display a first warning dialog describing the intent and the accounts affected
 - **FR-012**: After confirmation of the first liquidate warning, Liquidate MUST display a second warning dialog with final confirmation
-- **FR-013**: System MUST detect current market hours; if liquidate is requested outside normal market hours, a third warning dialog MUST be displayed explaining that the order will execute immediately and may result in poor pricing due to thin order books
+- **FR-013**: System MUST detect current market hours; if liquidate is requested outside normal market hours or if market hours detection fails, a third warning dialog MUST be displayed explaining that the order will execute immediately and may result in poor pricing due to thin order books
 - **FR-014**: Rebalance action MUST display a single warning dialog asking for confirmation before proceeding
 - **FR-015**: Use Cash action MUST allow execution to proceed after account selection without requiring additional confirmation dialogs
 - **FR-016**: Liquidate action MUST submit market orders to sell all positions at market for each selected account
 - **FR-017**: Rebalance action MUST adjust positions in selected accounts to match the target model allocation weights
 - **FR-018**: Use Cash action MUST deploy available cash in selected accounts to purchase securities that bring the portfolio allocation closest to the target model weights
-- **FR-019**: Dashboard MUST update displayed values in real-time or at a reasonable refresh interval (e.g., every 5-30 seconds) to reflect current market data
+- **FR-019**: Dashboard MUST provide a user-initiated refresh button/mechanism to update displayed values to reflect current market data
 - **FR-020**: Dashboard MUST handle accounts with zero positions gracefully; Rebalance and Liquidate should have appropriate availability messaging
 
 ### Key Entities *(include if feature involves data)*
 
 - **Portfolio**: Aggregate of all user accounts with combined metrics (total value, daily gain/loss, performance chart data)
-- **Account**: Individual brokerage account with properties (name, current value, daily gain/loss, excess cash, correctable drift, total drift, positions, cash balance)
+- **Account**: Individual brokerage account with properties (name, current value, daily gain/loss, excess cash defined as cash above model allocation threshold, correctable drift, total drift, positions, cash balance)
 - **Position**: Individual security holding within an account with properties (ticker, quantity, current price, market value, allocation percentage)
 - **Model Allocation**: Target allocation weights for the portfolio defining the ideal distribution across securities or asset classes
-- **Drift**: Measure of deviation from model allocation; "Correctable Drift" represents drift that can be fixed with current cash, "Total Drift" represents all deviation
+- **Drift**: Measure of deviation from model allocation calculated as the sum of absolute differences between actual position value and model position value, divided by total portfolio value. "Total Drift" is the current portfolio's drift percentage. "Correctable Drift" is the amount of Total Drift that can be eliminated through rebalancing (calculated by simulating optimal sell/buy trades to approach model allocation, accounting for discrete share quantities and pricing constraints, then measuring the remaining drift after such trades)
+
+## Clarifications
+
+### Session 2025-11-17
+
+- Q: When you say "Today's Gain/Loss," what time window should this represent? → A: Previous market close to current time (market day perspective)
+- Q: What should "Excess Cash" represent in the account grid? → A: Cash above a threshold defined by the model allocation
+- Q: How should "Correctable Drift" be calculated and expressed? → A: Total Drift minus the drift remaining after a hypothetical rebalance (calculated by selling overweight positions and buying underweight positions, accounting for discrete share quantities and pricing constraints)
+- Q: What should be the target refresh interval for dashboard data? → A: On-demand only (user initiates refresh manually)
+- Q: If the market hours detection API fails when the user clicks "Liquidate", how should the system respond? → A: Assume market is closed and display the thin-order-book warning automatically
 
 ## Success Criteria *(mandatory)*
 
