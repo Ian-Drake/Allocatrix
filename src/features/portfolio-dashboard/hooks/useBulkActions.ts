@@ -10,7 +10,7 @@ import type { UseBulkActionsReturn, ActionResult } from '../types/portfolio-dash
 import {
   liquidateAccounts,
   rebalanceAccounts,
-  useCashAccounts,
+  useCashOnAccounts,
 } from '../services/bulk-actions.service';
 
 export function useBulkActions(): UseBulkActionsReturn {
@@ -90,7 +90,7 @@ export function useBulkActions(): UseBulkActionsReturn {
     setResult(null);
 
     try {
-      const actionResult = await useCashAccounts(accountIds);
+      const actionResult = await useCashOnAccounts(accountIds);
       setResult(actionResult);
       
       if (!actionResult.success) {

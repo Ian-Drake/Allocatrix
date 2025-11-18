@@ -223,7 +223,7 @@ Web application structure from plan.md:
   - Buttons enabled if >=1 account selected
   - Selection summary (e.g., "2 accounts selected")
 - [X] T047 [P] [US3] Create BulkActionBar unit tests in `tests/unit/portfolio-dashboard/components/BulkActionBar.test.tsx`
-- [ ] T048 [US3] Create LiquidateConfirmDialog component at `src/features/portfolio-dashboard/components/LiquidateConfirmDialog/LiquidateConfirmDialog.tsx` implementing 3-step progressive dialog:
+- [X] T048 [US3] Create LiquidateConfirmDialog component at `src/features/portfolio-dashboard/components/LiquidateConfirmDialog/LiquidateConfirmDialog.tsx` implementing 3-step progressive dialog:
   - Dialog 1: Intent confirmation (show selected accounts, confirm liquidation)
   - Dialog 2: Final confirmation (show impact details, confirm again)
   - Dialog 3 (conditional): Market closed warning (show if market closed or API fails, explain thin order book risk)
@@ -231,7 +231,7 @@ Web application structure from plan.md:
   - Execute liquidate after all confirmations pass
   - Handle errors and show retry option
 - [ ] T049 [P] [US3] Create LiquidateConfirmDialog unit tests in `tests/unit/portfolio-dashboard/components/LiquidateConfirmDialog.test.tsx` (test state machine, dialog flow)
-- [ ] T050 [US3] Create RebalanceConfirmDialog component at `src/features/portfolio-dashboard/components/RebalanceConfirmDialog/RebalanceConfirmDialog.tsx` with:
+- [X] T050 [US3] Create RebalanceConfirmDialog component at `src/features/portfolio-dashboard/components/RebalanceConfirmDialog/RebalanceConfirmDialog.tsx` with:
   - Single confirmation dialog asking to confirm rebalance
   - Show selected accounts and what will happen
   - Cancel or Confirm buttons
@@ -241,12 +241,12 @@ Web application structure from plan.md:
 
 ### Update AccountGrid for US3
 
-- [ ] T052 [US3] Update AccountGridRow component at `src/features/portfolio-dashboard/components/AccountGrid/AccountGridRow.tsx` to:
+- [X] T052 [US3] Update AccountGridRow component at `src/features/portfolio-dashboard/components/AccountGrid/AccountGridRow.tsx` to:
   - Add checkbox column at start of row
   - Connect checkbox to `useAccountSelection()` hook
   - Pass `isSelected` prop to control checkbox state
   - Pass `onToggle` callback to handle checkbox changes
-- [ ] T053 [US3] Update AccountGrid component to:
+- [X] T053 [US3] Update AccountGrid component to:
   - Accept `selectedAccountIds` and `onSelectionChange` props
   - Pass selection state to each AccountGridRow
   - Wire up `useAccountSelection()` hook
@@ -265,7 +265,7 @@ Web application structure from plan.md:
 
 ### Main Dashboard Page Update for US3
 
-- [ ] T055 [US3] Update DashboardPage component at `src/features/portfolio-dashboard/pages/DashboardPage.tsx` to:
+- [X] T055 [US3] Update DashboardPage component at `src/features/portfolio-dashboard/pages/DashboardPage.tsx` to:
   - Use `useAccountSelection()` hook
   - Use `useBulkActions()` hook
   - Use `useMarketHours()` hook

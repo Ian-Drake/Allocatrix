@@ -132,7 +132,7 @@ describe('useBulkActions', () => {
 
   describe('executeUseCash', () => {
     it('should execute use cash successfully', async () => {
-      vi.spyOn(bulkActionsService, 'useCashAccounts').mockResolvedValue(mockSuccessResult);
+      vi.spyOn(bulkActionsService, 'useCashOnAccounts').mockResolvedValue(mockSuccessResult);
 
       const { result } = renderHook(() => useBulkActions());
 
@@ -148,7 +148,7 @@ describe('useBulkActions', () => {
     });
 
     it('should handle use cash errors', async () => {
-      vi.spyOn(bulkActionsService, 'useCashAccounts').mockRejectedValue(new Error('Validation error'));
+      vi.spyOn(bulkActionsService, 'useCashOnAccounts').mockRejectedValue(new Error('Validation error'));
 
       const { result } = renderHook(() => useBulkActions());
 

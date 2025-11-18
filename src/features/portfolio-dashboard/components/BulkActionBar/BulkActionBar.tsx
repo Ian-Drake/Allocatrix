@@ -16,7 +16,6 @@ export const BulkActionBar: React.FC<BulkActionBarProps> = ({
   isEnabled,
 }) => {
   const buttonBaseClass = 'px-4 py-2 rounded-lg font-medium transition-colors';
-  const enabledClass = 'bg-blue-600 text-white hover:bg-blue-700 cursor-pointer';
   const disabledClass = 'bg-gray-300 text-gray-500 cursor-not-allowed';
 
   const liquidateClass = isEnabled

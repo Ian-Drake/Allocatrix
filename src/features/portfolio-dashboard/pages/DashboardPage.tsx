@@ -13,8 +13,13 @@ import React, { useState } from 'react';
 import { PortfolioSummary } from '../components/PortfolioSummary/PortfolioSummary';
 import { PerformanceChart } from '../components/PerformanceChart/PerformanceChart';
 import { AccountGrid } from '../components/AccountGrid/AccountGrid';
+import { BulkActionBar } from '../components/BulkActionBar/BulkActionBar';
+import { LiquidateConfirmDialog } from '../components/LiquidateConfirmDialog/LiquidateConfirmDialog';
+import { RebalanceConfirmDialog } from '../components/RebalanceConfirmDialog/RebalanceConfirmDialog';
 import { usePortfolioData } from '../hooks/usePortfolioData';
 import { useAccountsData } from '../hooks/useAccountsData';
+import { useBulkActions } from '../hooks/useBulkActions';
+import { useMarketHours } from '../hooks/useMarketHours';
 
 export const DashboardPage: React.FC = () => {
   const {
@@ -34,7 +39,23 @@ export const DashboardPage: React.FC = () => {
     refresh: refreshAccounts,
   } = useAccountsData();
 
+  const {
+    isExecuting,
+    error: bulkActionError,
+    result: bulkActionResult,
+    executeLiquidate,
+    executeRebalance,
+    executeUseCash,
+    reset: resetBulkAction,
+  } = useBulkActions();
+
+  const {
+    isClosedOrError: isMarketClosedOrError,
+  } = useMarketHours();
+
   const [selectedAccountIds, setSelectedAccountIds] = useState<string[]>([]);
+  const [showLiquidateDialog, setShowLiquidateDialog] = useState<boolean>(false);
+  const [showRebalanceDialog, setShowRebalanceDialog] = useState<boolean>(false);
 
   const handleSelectionChange = (accountIds: string[]) => {
     setSelectedAccountIds(accountIds);
@@ -42,6 +63,52 @@ export const DashboardPage: React.FC = () => {
 
   const handleRefreshAll = async () => {
     await Promise.all([refresh(), refreshAccounts()]);
+  };
+
+  // Bulk action handlers
+  const handleLiquidateClick = () => {
+    setShowLiquidateDialog(true);
+  };
+
+  const handleRebalanceClick = () => {
+    setShowRebalanceDialog(true);
+  };
+
+  const handleUseCashClick = async () => {
+    // Use cash doesn't need a dialog (per spec)
+    await executeUseCash(selectedAccountIds);
+    // Refresh data after action
+    await handleRefreshAll();
+    // Clear selection
+    setSelectedAccountIds([]);
+  };
+
+  const handleLiquidateConfirm = async () => {
+    await executeLiquidate(selectedAccountIds);
+    setShowLiquidateDialog(false);
+    // Refresh data after action
+    await handleRefreshAll();
+    // Clear selection
+    setSelectedAccountIds([]);
+  };
+
+  const handleRebalanceConfirm = async () => {
+    await executeRebalance(selectedAccountIds);
+    setShowRebalanceDialog(false);
+    // Refresh data after action
+    await handleRefreshAll();
+    // Clear selection
+    setSelectedAccountIds([]);
+  };
+
+  const handleCancelDialog = () => {
+    setShowLiquidateDialog(false);
+    setShowRebalanceDialog(false);
+    resetBulkAction();
+  };
+
+  const getSelectedAccounts = () => {
+    return accounts.filter(acc => selectedAccountIds.includes(acc.id));
   };
 
   if (error && !summary) {
@@ -105,6 +172,36 @@ export const DashboardPage: React.FC = () => {
               </button>
             </div>
           )}
+          
+          {/* Bulk Action Bar */}
+          {selectedAccountIds.length > 0 && (
+            <BulkActionBar
+              selectedCount={selectedAccountIds.length}
+              onLiquidate={handleLiquidateClick}
+              onRebalance={handleRebalanceClick}
+              onUseCash={handleUseCashClick}
+              isEnabled={selectedAccountIds.length > 0}
+            />
+          )}
+
+          {/* Bulk Action Result Message */}
+          {bulkActionResult && (
+            <div className={`rounded-lg p-4 mb-4 ${bulkActionResult.success ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'}`}>
+              <p className={bulkActionResult.success ? 'text-green-800' : 'text-red-800'}>
+                {bulkActionResult.message}
+              </p>
+              {bulkActionResult.errors.length > 0 && (
+                <ul className="mt-2 list-disc list-inside text-sm">
+                  {bulkActionResult.errors.map((err, idx) => (
+                    <li key={idx} className="text-red-700">
+                      {err.accountId}: {err.reason}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
+
           <AccountGrid
             accounts={accounts}
             selectedAccountIds={selectedAccountIds}
@@ -112,6 +209,27 @@ export const DashboardPage: React.FC = () => {
             onSelectionChange={handleSelectionChange}
           />
         </div>
+
+        {/* Liquidate Confirm Dialog */}
+        <LiquidateConfirmDialog
+          isOpen={showLiquidateDialog}
+          selectedAccounts={getSelectedAccounts()}
+          isMarketClosed={isMarketClosedOrError}
+          onConfirm={handleLiquidateConfirm}
+          onCancel={handleCancelDialog}
+          isExecuting={isExecuting}
+          error={bulkActionError}
+        />
+
+        {/* Rebalance Confirm Dialog */}
+        <RebalanceConfirmDialog
+          isOpen={showRebalanceDialog}
+          selectedAccounts={getSelectedAccounts()}
+          onConfirm={handleRebalanceConfirm}
+          onCancel={handleCancelDialog}
+          isExecuting={isExecuting}
+          error={bulkActionError}
+        />
 
         {/* Info Footer */}
         <div className="text-center text-sm text-gray-600">
