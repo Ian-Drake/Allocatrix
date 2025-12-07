@@ -1,6 +1,5 @@
 /**
  * Integration test for Account Grid functionality
- * @vitest-environment jsdom
  */
 
 import React from 'react';

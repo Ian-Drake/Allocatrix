@@ -164,7 +164,7 @@ export function errorHandler(
   req: Request,
   res: Response,
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  next: NextFunction
+  _next: NextFunction
 ): void {
   // Default values
   let statusCode = error.statusCode || 500;

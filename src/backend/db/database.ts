@@ -2,8 +2,13 @@ import sqlite3 from 'sqlite3';
 import path from 'path';
 import fs from 'fs';
 
-const dbPath = process.env.DATABASE_URL || 'file:./data/allocatrix.db';
-const filePath = dbPath.replace('file:', '');
+const dbPath = process.env.DATABASE_URL || 'data/allocatrix.db';
+// Remove file: protocol if present
+const cleanPath = dbPath.replace(/^file:/, '');
+// Resolve to absolute path from project root
+const filePath = path.isAbsolute(cleanPath)
+  ? cleanPath
+  : path.join(process.cwd(), cleanPath);
 
 // Ensure data directory exists
 const dataDir = path.dirname(filePath);

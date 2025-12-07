@@ -18,8 +18,11 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
     const { authUrl, state } = authService.generateOAuthUrl();
 
     // Store state in session cookie for CSRF verification during callback
+    // Use Secure flag for production or HTTPS dev tunnels
+    const isSecure = process.env.NODE_ENV === 'production' || process.env.SCHWAB_REDIRECT_URI?.startsWith('https://');
+    // Use Lax to allow cookie to be sent back from Schwab redirect
     res.setHeader('Set-Cookie', [
-      `oauth_state=${state}; Path=/; Max-Age=600; HttpOnly; SameSite=Strict; Secure`,
+      `oauth_state=${state}; Path=/; Max-Age=600; HttpOnly; SameSite=Lax${isSecure ? '; Secure' : ''}`,
     ]);
 
     // Redirect user to Schwab OAuth endpoint

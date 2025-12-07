@@ -56,11 +56,11 @@ export const AccountGrid: React.FC<AccountGridProps> = ({
   const useVirtualScrolling = accounts.length > 20;
 
   return (
-    <div className="w-full overflow-x-auto bg-white rounded-lg shadow">
+    <div className="w-full overflow-x-auto bg-white rounded-lg shadow hover:shadow-lg transition-shadow duration-300">
       <table className="min-w-full divide-y divide-gray-200">
         <thead className="bg-gray-50">
           <tr>
-            <th className="px-4 py-3 text-left">
+            <th className="px-2 md:px-4 py-2 md:py-3 text-left">
               <input
                 type="checkbox"
                 checked={isAllSelected}
@@ -74,22 +74,22 @@ export const AccountGrid: React.FC<AccountGridProps> = ({
                 aria-label="Select all accounts"
               />
             </th>
-            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+            <th className="px-2 md:px-4 py-2 md:py-3 text-left text-xs md:text-xs font-medium text-gray-500 uppercase tracking-wider">
               Account Name
             </th>
-            <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+            <th className="hidden sm:table-cell px-2 md:px-4 py-2 md:py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
               Current Value
             </th>
-            <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+            <th className="px-2 md:px-4 py-2 md:py-3 text-right text-xs md:text-xs font-medium text-gray-500 uppercase tracking-wider">
               Today's Gain/Loss
             </th>
-            <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+            <th className="hidden md:table-cell px-2 md:px-4 py-2 md:py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
               Excess Cash
             </th>
-            <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+            <th className="hidden lg:table-cell px-2 md:px-4 py-2 md:py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
               Correctable Drift
             </th>
-            <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+            <th className="hidden sm:table-cell px-2 md:px-4 py-2 md:py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
               Total Drift
             </th>
           </tr>

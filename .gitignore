@@ -46,6 +46,9 @@ data/
 *.sqlite
 *.sqlite3
 
+# Dev Tunnel
+.devtunnel
+
 # Logs
 logs/
 *.log

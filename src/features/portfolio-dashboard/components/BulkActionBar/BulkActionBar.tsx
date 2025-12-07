@@ -15,27 +15,28 @@ export const BulkActionBar: React.FC<BulkActionBarProps> = ({
   onUseCash,
   isEnabled,
 }) => {
-  const buttonBaseClass = 'px-4 py-2 rounded-lg font-medium transition-colors';
+  const buttonBaseClass = 'px-2 md:px-4 py-1 md:py-2 rounded-lg text-sm md:text-base font-medium transition-all duration-200 flex-shrink-0';
   const disabledClass = 'bg-gray-300 text-gray-500 cursor-not-allowed';
 
   const liquidateClass = isEnabled
-    ? 'bg-red-600 text-white hover:bg-red-700 cursor-pointer'
+    ? 'bg-red-600 text-white hover:bg-red-700 cursor-pointer shadow-md hover:shadow-lg'
     : disabledClass;
   
   const rebalanceClass = isEnabled
-    ? 'bg-green-600 text-white hover:bg-green-700 cursor-pointer'
+    ? 'bg-green-600 text-white hover:bg-green-700 cursor-pointer shadow-md hover:shadow-lg'
     : disabledClass;
   
   const useCashClass = isEnabled
-    ? 'bg-blue-600 text-white hover:bg-blue-700 cursor-pointer'
+    ? 'bg-blue-600 text-white hover:bg-blue-700 cursor-pointer shadow-md hover:shadow-lg'
     : disabledClass;
 
   return (
-    <div className="flex items-center justify-between bg-white rounded-lg shadow p-4 mb-4">
-      <div className="flex items-center space-x-4">
-        <span className="text-gray-700 font-medium">
+    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between bg-white rounded-lg shadow-md p-3 md:p-4 mb-4 gap-3 md:gap-4 animate-slideIn">
+      {/* Selection Summary */}
+      <div className="flex items-center">
+        <span className="text-gray-700 text-sm md:text-base font-medium">
           {selectedCount > 0 ? (
-            <span className="text-blue-600">
+            <span className="text-blue-600 font-semibold">
               {selectedCount} {selectedCount === 1 ? 'account' : 'accounts'} selected
             </span>
           ) : (
@@ -44,12 +45,14 @@ export const BulkActionBar: React.FC<BulkActionBarProps> = ({
         </span>
       </div>
 
-      <div className="flex space-x-3">
+      {/* Action Buttons */}
+      <div className="flex gap-2 md:gap-3 flex-wrap md:flex-nowrap">
         <button
           onClick={onLiquidate}
           disabled={!isEnabled}
           className={`${buttonBaseClass} ${liquidateClass}`}
           aria-label="Liquidate selected accounts"
+          title="Liquidate selected accounts"
         >
           Liquidate
         </button>
@@ -59,6 +62,7 @@ export const BulkActionBar: React.FC<BulkActionBarProps> = ({
           disabled={!isEnabled}
           className={`${buttonBaseClass} ${rebalanceClass}`}
           aria-label="Rebalance selected accounts"
+          title="Rebalance selected accounts"
         >
           Rebalance
         </button>
@@ -68,6 +72,7 @@ export const BulkActionBar: React.FC<BulkActionBarProps> = ({
           disabled={!isEnabled}
           className={`${buttonBaseClass} ${useCashClass}`}
           aria-label="Use cash in selected accounts"
+          title="Deploy excess cash to selected accounts"
         >
           Use Cash
         </button>

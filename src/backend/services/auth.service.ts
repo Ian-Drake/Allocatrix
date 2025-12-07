@@ -13,7 +13,7 @@ export interface SchwabTokenResponse {
   access_token: string;
   refresh_token: string;
   expires_in: number;
-  refresh_token_expires_in: number;
+  refresh_token_expires_in?: number; // Optional - not returned on refresh token endpoint
   token_type: string;
   scope: string;
 }
@@ -25,15 +25,15 @@ export interface AuthStatus {
 }
 
 export interface TokenRow {
-  accessToken: string;
-  refreshToken: string;
+  encryptedAccessToken: string;
+  encryptedRefreshToken: string;
   expiresAt: string;
   refreshTokenExpiresAt: string;
 }
 
 const clientId = process.env.SCHWAB_CLIENT_ID || '';
 const clientSecret = process.env.SCHWAB_CLIENT_SECRET || '';
-const redirectUri = process.env.SCHWAB_REDIRECT_URI || 'http://localhost:3000/api/auth/callback';
+const redirectUri = process.env.SCHWAB_REDIRECT_URI || 'https://localhost:3000/api/auth/callback';
 const schwabTokenUrl = 'https://api.schwabapi.com/v1/oauth/token';
 const schwabAuthUrl = 'https://api.schwabapi.com/v1/oauth/authorize';
 
@@ -48,15 +48,10 @@ if (!clientId || !clientSecret) {
 export function generateOAuthUrl(): { authUrl: string; state: string } {
   const state = crypto.randomBytes(32).toString('hex');
 
-  const params = new URLSearchParams({
-    client_id: clientId,
-    redirect_uri: redirectUri,
-    response_type: 'code',
-    scope: 'PlaceTrades AccountAccess MoveMoney',
-    state,
-  });
-
-  const authUrl = `${schwabAuthUrl}?${params.toString()}`;
+  // Build authorization URL exactly as shown in Schwab documentation
+  // Template: https://api.schwabapi.com/v1/oauth/authorize?client_id={CONSUMER_KEY}&redirect_uri={APP_CALLBACK_URL}
+  const authUrl = `${schwabAuthUrl}?client_id=${encodeURIComponent(clientId)}&redirect_uri=${encodeURIComponent(redirectUri)}`;
+  
   return { authUrl, state };
 }
 
@@ -66,22 +61,27 @@ export function generateOAuthUrl(): { authUrl: string; state: string } {
  */
 export async function exchangeCodeForTokens(code: string): Promise<OAuthTokens> {
   try {
+    // Schwab requires Basic Auth with Base64 encoded client_id:client_secret
+    // Per Schwab docs: code must be URL decoded prior to making request
+    const decodedCode = decodeURIComponent(code);
+    const credentials = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
+    
     const response = await fetch(schwabTokenUrl, {
       method: 'POST',
       headers: {
+        'Authorization': `Basic ${credentials}`,
         'Content-Type': 'application/x-www-form-urlencoded',
       },
       body: new URLSearchParams({
         grant_type: 'authorization_code',
-        code,
-        client_id: clientId,
-        client_secret: clientSecret,
+        code: decodedCode,
         redirect_uri: redirectUri,
       }).toString(),
     });
 
     if (!response.ok) {
       const errorData = await response.text();
+      console.error('[Auth] Token exchange failed:', errorData);
       throw new Error(`Schwab token exchange failed: ${response.statusText} - ${errorData}`);
     }
 
@@ -89,8 +89,16 @@ export async function exchangeCodeForTokens(code: string): Promise<OAuthTokens> 
 
     // Calculate expiration times
     const now = new Date();
-    const expiresAt = new Date(now.getTime() + tokenData.expires_in * 1000);
-    const refreshTokenExpiresAt = new Date(now.getTime() + tokenData.refresh_token_expires_in * 1000);
+    const expiresIn = tokenData.expires_in || 1800; // Default to 30 minutes if not provided
+    const refreshExpiresIn = tokenData.refresh_token_expires_in || 604800; // Default to 7 days if not provided
+    
+    const expiresAt = new Date(now.getTime() + expiresIn * 1000);
+    const refreshTokenExpiresAt = new Date(now.getTime() + refreshExpiresIn * 1000);
+
+    // Log token info for debugging (without exposing the actual tokens)
+    console.error('[Auth] Access token length:', tokenData.access_token.length);
+    console.error('[Auth] Refresh token length:', tokenData.refresh_token.length);
+    console.error('[Auth] Refresh token first 20 chars:', tokenData.refresh_token.substring(0, 20));
 
     return {
       accessToken: tokenData.access_token,
@@ -107,30 +115,55 @@ export async function exchangeCodeForTokens(code: string): Promise<OAuthTokens> 
  * Store encrypted tokens in database
  * Returns the token record ID
  */
-export async function storeTokens(tokens: OAuthTokens): Promise<string> {
+export async function storeTokens(tokens: OAuthTokens, accountId?: string): Promise<string> {
   const tokenId = crypto.randomUUID();
+  
+  // Validate tokens are properly formatted before encrypting
+  if (!tokens.accessToken || !tokens.refreshToken) {
+    throw new Error('Access token and refresh token are required');
+  }
+  
   const encryptedAccessToken = encryptionUtils.encrypt(tokens.accessToken);
   const encryptedRefreshToken = encryptionUtils.encrypt(tokens.refreshToken);
+
+  // Debug: Verify round-trip encryption
+  const testDecryptAccess = encryptionUtils.decrypt(encryptedAccessToken);
+  const testDecryptRefresh = encryptionUtils.decrypt(encryptedRefreshToken);
+  
+  if (testDecryptAccess !== tokens.accessToken) {
+    throw new Error('Access token encryption round-trip failed - data corruption');
+  }
+  if (testDecryptRefresh !== tokens.refreshToken) {
+    throw new Error('Refresh token encryption round-trip failed - data corruption');
+  }
 
   const query = `
     INSERT INTO schwab_token (
       id, 
-      accessToken, 
-      refreshToken, 
+      accountId,
+      encryptedAccessToken, 
+      encryptedRefreshToken, 
       expiresAt, 
       refreshTokenExpiresAt,
-      createdAt
-    ) VALUES (?, ?, ?, ?, ?, ?)
+      createdAt,
+      updatedAt
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
   `;
 
   await db.runAsync(query, [
     tokenId,
+    accountId || null, // Use null if accountId not provided
     encryptedAccessToken,
     encryptedRefreshToken,
     tokens.expiresAt.toISOString(),
     tokens.refreshTokenExpiresAt.toISOString(),
     new Date().toISOString(),
+    new Date().toISOString(),
   ]);
+
+  console.error('[Auth] Token stored successfully. ID:', tokenId);
+  console.error('[Auth] Stored access token length:', tokens.accessToken.length);
+  console.error('[Auth] Stored refresh token length:', tokens.refreshToken.length);
 
   return tokenId;
 }
@@ -140,7 +173,7 @@ export async function storeTokens(tokens: OAuthTokens): Promise<string> {
  */
 export async function getTokens(tokenId: string): Promise<OAuthTokens | null> {
   const query = `
-    SELECT accessToken, refreshToken, expiresAt, refreshTokenExpiresAt 
+    SELECT encryptedAccessToken, encryptedRefreshToken, expiresAt, refreshTokenExpiresAt 
     FROM schwab_token 
     WHERE id = ?
   `;
@@ -151,8 +184,8 @@ export async function getTokens(tokenId: string): Promise<OAuthTokens | null> {
   }
 
   return {
-    accessToken: encryptionUtils.decrypt(row.accessToken),
-    refreshToken: encryptionUtils.decrypt(row.refreshToken),
+    accessToken: encryptionUtils.decrypt(row.encryptedAccessToken),
+    refreshToken: encryptionUtils.decrypt(row.encryptedRefreshToken),
     expiresAt: new Date(row.expiresAt),
     refreshTokenExpiresAt: new Date(row.refreshTokenExpiresAt),
   };
@@ -183,21 +216,38 @@ export async function refreshAccessToken(tokenId: string): Promise<OAuthTokens> 
   }
 
   try {
+    // Schwab requires Basic Auth with Base64 encoded client_id:client_secret
+    const credentials = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
+    
+    // Validate refresh token is not empty or malformed
+    const refreshToken = currentTokens.refreshToken.trim();
+    if (!refreshToken) {
+      throw new Error('Refresh token is empty or invalid');
+    }
+    
+    console.error('[Auth] Refresh token length:', refreshToken.length);
+    console.error('[Auth] Refresh token first 20 chars:', refreshToken.substring(0, 20));
+    
+    // Build form body manually to ensure proper encoding
+    const bodyParams = new URLSearchParams();
+    bodyParams.append('grant_type', 'refresh_token');
+    bodyParams.append('refresh_token', refreshToken);
+    const body = bodyParams.toString();
+    
+    console.error('[Auth] Request body length:', body.length);
+    
     const response = await fetch(schwabTokenUrl, {
       method: 'POST',
       headers: {
+        'Authorization': `Basic ${credentials}`,
         'Content-Type': 'application/x-www-form-urlencoded',
       },
-      body: new URLSearchParams({
-        grant_type: 'refresh_token',
-        refresh_token: currentTokens.refreshToken,
-        client_id: clientId,
-        client_secret: clientSecret,
-      }).toString(),
+      body: body,
     });
 
     if (!response.ok) {
       const errorData = await response.text();
+      console.error('[Auth] Refresh token endpoint error:', errorData);
       throw new Error(`Schwab token refresh failed: ${response.statusText} - ${errorData}`);
     }
 
@@ -206,7 +256,9 @@ export async function refreshAccessToken(tokenId: string): Promise<OAuthTokens> 
     // Calculate expiration times
     const now = new Date();
     const expiresAt = new Date(now.getTime() + tokenData.expires_in * 1000);
-    const refreshTokenExpiresAt = new Date(now.getTime() + tokenData.refresh_token_expires_in * 1000);
+    // Note: Refresh token endpoint doesn't return refresh_token_expires_in
+    // Keep the original refresh token expiration date since the refresh token itself doesn't change
+    const refreshTokenExpiresAt = currentTokens.refreshTokenExpiresAt;
 
     const newTokens: OAuthTokens = {
       accessToken: tokenData.access_token,
@@ -221,8 +273,8 @@ export async function refreshAccessToken(tokenId: string): Promise<OAuthTokens> 
 
     const updateQuery = `
       UPDATE schwab_token 
-      SET accessToken = ?, 
-          refreshToken = ?, 
+      SET encryptedAccessToken = ?, 
+          encryptedRefreshToken = ?, 
           expiresAt = ?, 
           refreshTokenExpiresAt = ?,
           updatedAt = ?

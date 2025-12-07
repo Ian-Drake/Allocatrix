@@ -1,12 +1,12 @@
 import { NextApiResponse } from 'next';
-import { AuthenticatedRequest } from '../../../backend/middleware/session.middleware';
-import { authGuardMiddleware } from '../../../backend/middleware/auth-guard';
+import { AuthenticatedRequest, sessionMiddleware } from '../../../backend/middleware/session.middleware';
 import * as authService from '../../../backend/services/auth.service';
 
 /**
  * GET /api/auth/status
  * Get current authentication status
  * Returns authenticated status and token expiry info
+ * This endpoint does NOT require authentication - it's used to check if the user is logged in
  */
 export default async function handler(req: AuthenticatedRequest, res: NextApiResponse) {
   // Only allow GET requests
@@ -16,18 +16,16 @@ export default async function handler(req: AuthenticatedRequest, res: NextApiRes
   }
 
   try {
-    const isAuthorized = await authGuardMiddleware(req, res);
+    // Extract session (but don't require it)
+    sessionMiddleware(req, res);
 
-    if (!isAuthorized) {
-      // If not authorized, return authenticated: false (status already sent by guard)
-      return;
-    }
-
+    // If no session, return not authenticated
     if (!req.tokenId) {
       res.status(200).json({ authenticated: false });
       return;
     }
 
+    // If session exists, get auth status
     const status = await authService.getAuthStatus(req.tokenId);
     res.status(200).json(status);
   } catch (error) {

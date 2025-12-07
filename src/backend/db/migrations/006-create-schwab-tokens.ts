@@ -7,14 +7,13 @@ const migration = {
     await runAsync(`
       CREATE TABLE schwab_token (
         id TEXT PRIMARY KEY,
-        accountId TEXT NOT NULL UNIQUE,
+        accountId TEXT UNIQUE,
         encryptedAccessToken TEXT NOT NULL,
         encryptedRefreshToken TEXT NOT NULL,
         expiresAt DATETIME NOT NULL,
         refreshTokenExpiresAt DATETIME NOT NULL,
         createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        updatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (accountId) REFERENCES account(id) ON DELETE CASCADE
+        updatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
       )
     `);
     await runAsync('CREATE INDEX idx_token_expires ON schwab_token(expiresAt)');

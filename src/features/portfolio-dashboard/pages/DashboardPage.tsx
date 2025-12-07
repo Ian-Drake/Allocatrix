@@ -6,6 +6,7 @@
  * Main dashboard page that combines:
  * - Portfolio Summary (total value, daily P&L, refresh button)
  * - Performance Chart (with timeframe selector)
+ * - Account Grid with bulk actions
  * - Responsive layout with loading and error states
  */
 
@@ -16,10 +17,14 @@ import { AccountGrid } from '../components/AccountGrid/AccountGrid';
 import { BulkActionBar } from '../components/BulkActionBar/BulkActionBar';
 import { LiquidateConfirmDialog } from '../components/LiquidateConfirmDialog/LiquidateConfirmDialog';
 import { RebalanceConfirmDialog } from '../components/RebalanceConfirmDialog/RebalanceConfirmDialog';
+import { LoadingState } from '../components/LoadingState/LoadingState';
+import { EmptyPortfolioState, EmptyGridState } from '../components/EmptyState/EmptyState';
+import { MarketClosedWarning } from '../components/ActionStatus/ActionStatus';
 import { usePortfolioData } from '../hooks/usePortfolioData';
 import { useAccountsData } from '../hooks/useAccountsData';
 import { useBulkActions } from '../hooks/useBulkActions';
 import { useMarketHours } from '../hooks/useMarketHours';
+
 
 export const DashboardPage: React.FC = () => {
   const {
@@ -132,6 +137,35 @@ export const DashboardPage: React.FC = () => {
     );
   }
 
+  // Show empty portfolio state if no accounts
+  if (!isLoading && accounts.length === 0) {
+    return (
+      <EmptyPortfolioState
+        onCreateAccount={() => {
+          // Navigate to account linking or show dialog
+          window.location.href = '/accounts/link';
+        }}
+      />
+    );
+  }
+
+  // Show loading state while fetching initial data
+  if (isLoading || isAccountsLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 p-4 md:p-8">
+        <div className="max-w-6xl mx-auto space-y-8">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">Portfolio Dashboard</h1>
+            <p className="text-gray-600 mt-2">
+              Monitor your portfolio performance and account metrics
+            </p>
+          </div>
+          <LoadingState showSummary={true} showChart={true} showGrid={true} />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 p-4 md:p-8">
       <div className="max-w-6xl mx-auto space-y-8">
@@ -142,6 +176,11 @@ export const DashboardPage: React.FC = () => {
             Monitor your portfolio performance and account metrics
           </p>
         </div>
+
+        {/* Market Closed Warning */}
+        {isMarketClosedOrError && (
+          <MarketClosedWarning />
+        )}
 
         {/* Portfolio Summary */}
         <PortfolioSummary
@@ -202,12 +241,16 @@ export const DashboardPage: React.FC = () => {
             </div>
           )}
 
-          <AccountGrid
-            accounts={accounts}
-            selectedAccountIds={selectedAccountIds}
-            isLoading={isAccountsLoading}
-            onSelectionChange={handleSelectionChange}
-          />
+          {accounts.length === 0 ? (
+            <EmptyGridState message="No accounts to display" />
+          ) : (
+            <AccountGrid
+              accounts={accounts}
+              selectedAccountIds={selectedAccountIds}
+              isLoading={isAccountsLoading}
+              onSelectionChange={handleSelectionChange}
+            />
+          )}
         </div>
 
         {/* Liquidate Confirm Dialog */}

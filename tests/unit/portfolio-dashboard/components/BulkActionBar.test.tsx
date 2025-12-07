@@ -1,6 +1,5 @@
 /**
  * Unit tests for BulkActionBar component
- * @vitest-environment jsdom
  */
 
 import React from 'react';

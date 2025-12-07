@@ -106,11 +106,26 @@ export class SchwabApiService {
         );
 
         if (!response.ok) {
-          const error = await response.json();
+          let errorMessage = 'Unknown error';
+          let errorCode = 'ACCOUNT_FETCH_FAILED';
+          
+          try {
+            const errorText = await response.text();
+            console.error('[getAccountPositions] Error response body:', errorText);
+            
+            if (errorText) {
+              const error = JSON.parse(errorText);
+              errorMessage = error.message || error.error || errorText;
+              errorCode = error.code || error.error_code || errorCode;
+            }
+          } catch (parseError) {
+            console.error('[getAccountPositions] Failed to parse error response:', parseError);
+          }
+          
           throw new SchwabApiError(
-            `Failed to fetch account positions: ${error.message || 'Unknown error'}`,
+            `Failed to fetch account positions: ${errorMessage}`,
             response.status,
-            error.code || 'ACCOUNT_FETCH_FAILED',
+            errorCode,
           );
         }
 
@@ -140,11 +155,26 @@ export class SchwabApiService {
         });
 
         if (!response.ok) {
-          const error = await response.json();
+          let errorMessage = 'Unknown error';
+          let errorCode = 'ACCOUNTS_LIST_FAILED';
+          
+          try {
+            const errorText = await response.text();
+            console.error('[getLinkedAccounts] Error response body:', errorText);
+            
+            if (errorText) {
+              const error = JSON.parse(errorText);
+              errorMessage = error.message || error.error || errorText;
+              errorCode = error.code || error.error_code || errorCode;
+            }
+          } catch (parseError) {
+            console.error('[getLinkedAccounts] Failed to parse error response:', parseError);
+          }
+          
           throw new SchwabApiError(
-            `Failed to fetch linked accounts: ${error.message || 'Unknown error'}`,
+            `Failed to fetch linked accounts: ${errorMessage}`,
             response.status,
-            error.code || 'ACCOUNTS_LIST_FAILED',
+            errorCode,
           );
         }
 
@@ -187,11 +217,11 @@ export class SchwabApiService {
         );
 
         if (!response.ok) {
-          const error = await response.json();
+          const { message, code } = await this.parseErrorResponse(response, 'ORDER_SUBMISSION_FAILED');
           throw new SchwabApiError(
-            `Failed to submit order: ${error.message || 'Unknown error'}`,
+            `Failed to submit order: ${message}`,
             response.status,
-            error.code || 'ORDER_SUBMISSION_FAILED',
+            code,
           );
         }
 
@@ -226,11 +256,11 @@ export class SchwabApiService {
         );
 
         if (!response.ok) {
-          const error = await response.json();
+          const { message, code } = await this.parseErrorResponse(response, 'ORDER_STATUS_FAILED');
           throw new SchwabApiError(
-            `Failed to fetch order status: ${error.message || 'Unknown error'}`,
+            `Failed to fetch order status: ${message}`,
             response.status,
-            error.code || 'ORDER_STATUS_FAILED',
+            code,
           );
         }
 
@@ -286,11 +316,11 @@ export class SchwabApiService {
         );
 
         if (!response.ok) {
-          const error = await response.json();
+          const { message, code } = await this.parseErrorResponse(response, 'PRICE_DATA_FAILED');
           throw new SchwabApiError(
-            `Failed to fetch historical prices: ${error.message || 'Unknown error'}`,
+            `Failed to fetch historical prices: ${message}`,
             response.status,
-            error.code || 'PRICE_DATA_FAILED',
+            code,
           );
         }
 
@@ -331,11 +361,11 @@ export class SchwabApiService {
         );
 
         if (!response.ok) {
-          const error = await response.json();
+          const { message, code } = await this.parseErrorResponse(response, 'INSTRUMENT_SEARCH_FAILED');
           throw new SchwabApiError(
-            `Failed to search instrument: ${error.message || 'Unknown error'}`,
+            `Failed to search instrument: ${message}`,
             response.status,
-            error.code || 'INSTRUMENT_SEARCH_FAILED',
+            code,
           );
         }
 
@@ -345,6 +375,36 @@ export class SchwabApiService {
       },
       'searchInstrument',
     );
+  }
+
+  /**
+   * Helper method to safely parse error responses from Schwab API
+   */
+  private async parseErrorResponse(
+    response: Response,
+    defaultErrorCode: string,
+  ): Promise<{ message: string; code: string }> {
+    let errorMessage = 'Unknown error';
+    let errorCode = defaultErrorCode;
+
+    try {
+      const errorText = await response.text();
+      console.error('[SchwabApi] Error response body:', errorText, 'Status:', response.status);
+
+      if (errorText) {
+        try {
+          const error = JSON.parse(errorText);
+          errorMessage = error.message || error.error || errorText;
+          errorCode = error.code || error.error_code || errorCode;
+        } catch {
+          errorMessage = errorText;
+        }
+      }
+    } catch (parseError) {
+      console.error('[SchwabApi] Failed to parse error response:', parseError);
+    }
+
+    return { message: errorMessage, code: errorCode };
   }
 
   /**

@@ -37,9 +37,14 @@ export function setSessionCookie(
 ): void {
   const maxAge = options?.maxAge || SESSION_MAX_AGE;
   const encryptedTokenId = encryptionUtils.encrypt(tokenId);
+  
+  // Use Secure flag for production or HTTPS dev tunnels
+  const isSecure = process.env.NODE_ENV === 'production' || process.env.SCHWAB_REDIRECT_URI?.startsWith('https://');
+  // Use Lax for OAuth redirects to work properly
+  const sameSite = 'Lax';
 
   res.setHeader('Set-Cookie', [
-    `${SESSION_COOKIE_NAME}=${encryptedTokenId}; Path=/; Max-Age=${maxAge}; HttpOnly; SameSite=Strict; Secure`,
+    `${SESSION_COOKIE_NAME}=${encryptedTokenId}; Path=/; Max-Age=${maxAge}; HttpOnly; SameSite=${sameSite}${isSecure ? '; Secure' : ''}`,
   ]);
 }
 
@@ -47,8 +52,9 @@ export function setSessionCookie(
  * Clear session cookie on logout
  */
 export function clearSessionCookie(res: NextApiResponse): void {
+  const isSecure = process.env.NODE_ENV === 'production' || process.env.SCHWAB_REDIRECT_URI?.startsWith('https://');
   res.setHeader('Set-Cookie', [
-    `${SESSION_COOKIE_NAME}=; Path=/; Max-Age=0; HttpOnly; SameSite=Strict; Secure`,
+    `${SESSION_COOKIE_NAME}=; Path=/; Max-Age=0; HttpOnly; SameSite=Lax${isSecure ? '; Secure' : ''}`,
   ]);
 }
 
