@@ -21,7 +21,9 @@
     "test:coverage": "vitest run --coverage",
     "db:migrate": "node -r ts-node/register src/backend/db/runner.ts",
     "db:reset": "rm -f data/allocatrix.db && npm run db:migrate",
-    "db:seed": "node -r ts-node/register scripts/seed-dashboard-data.ts"
+    "db:seed": "node -r ts-node/register scripts/seed-dashboard-data.ts",
+    "schwab:cert": "node tools/generate-cert.js",
+    "schwab:oauth": "npm run schwab:cert && node tools/oauth-setup.js"
   },
   "dependencies": {
     "@types/uuid": "^11.0.0",

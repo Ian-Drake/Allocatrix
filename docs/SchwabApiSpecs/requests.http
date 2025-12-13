@@ -1,0 +1,542 @@
+###############################################################################
+# Schwab Trader API - Complete OAuth Flow & API Endpoints
+# VS Code REST Client Extension
+###############################################################################
+
+@baseUrl = {{$dotenv baseUrl}}
+@oauthBaseUrl = {{$dotenv oauthBaseUrl}}
+@redirectUri = {{$dotenv redirectUri}}
+@clientId = {{$dotenv clientId}}
+@clientSecret = {{$dotenv clientSecret}}
+@base64Credentials = {{$dotenv base64Credentials}}
+@authorizationCode = {{$dotenv authorizationCode}}
+@accessToken = {{$dotenv accessToken}}
+@refreshToken = {{$dotenv refreshToken}}
+@encryptedAccountNumber = {{$dotenv encryptedAccountNumber}}
+@orderId = {{$dotenv orderId}}
+@transactionId = {{$dotenv transactionId}}
+###############################################################################
+# OAUTH 2.0 AUTHENTICATION FLOW
+###############################################################################
+# Tokens are automatically obtained using the oauth-setup.js script
+# See README.md for initial setup instructions
+
+### AUTOMATED SETUP (Run Once)
+# Before making API calls, run this command in the terminal:
+#
+#   node oauth-setup.js
+#
+# This will:
+# 1. Open your browser for Schwab authorization
+# 2. Capture the authorization code
+# 3. Exchange it for access and refresh tokens
+# 4. Automatically save tokens to http-client.private.env.json
+#
+# The access token is valid for 30 minutes.
+# When it expires, use the "Refresh Access Token" request below.
+
+### Refresh Access Token
+# Use this when your access token expires (every 30 minutes)
+# @name  RefreshAccessToken
+POST {{oauthBaseUrl}}/token
+Content-Type: application/x-www-form-urlencoded
+Authorization: Basic {{base64Credentials}}
+
+grant_type=refresh_token&refresh_token={{refreshToken}}
+
+###############################################################################
+# ACCOUNTS ENDPOINTS
+###############################################################################
+
+### Get Account Numbers (Encrypted)
+# This must be called first to get encrypted account numbers for subsequent calls
+# @name  GetAccountNumbers
+GET {{baseUrl}}/accounts/accountNumbers
+Authorization: Bearer {{RefreshAccessToken.response.body.$.access_token}}
+
+### Get All Linked Accounts (without positions)
+GET {{baseUrl}}/accounts
+Authorization: Bearer {{RefreshAccessToken.response.body.$.access_token}}
+
+### Get All Linked Accounts (with positions)
+GET {{baseUrl}}/accounts?fields=positions
+Authorization: Bearer {{RefreshAccessToken.response.body.$.access_token}}
+ 
+@encryptedAccountNumber = {{GetAccountNumbers.response.body.$[5].hashValue}}
+
+### Get Specific Account (without positions)
+GET {{baseUrl}}/accounts/{{encryptedAccountNumber}}
+Authorization: Bearer {{RefreshAccessToken.response.body.$.access_token}}
+
+### Get Specific Account (with positions)
+GET {{baseUrl}}/accounts/{{encryptedAccountNumber}}?fields=positions
+Authorization: Bearer {{RefreshAccessToken.response.body.$.access_token}}
+
+###############################################################################
+# ORDERS ENDPOINTS
+###############################################################################
+
+### Get All Orders for Specific Account (with filters)
+# maxResults: max number of orders to return (default 3000)
+# fromEnteredTime: start date in ISO-8601 format (YYYY-MM-DDTHH:MM:SS.sssZ)
+# toEnteredTime: end date in ISO-8601 format (YYYY-MM-DDTHH:MM:SS.sssZ)
+# status: filter by order status (e.g., FILLED, PENDING_ACTIVATION, QUEUED, WORKING, etc.)
+# @name  GetOrders
+GET {{baseUrl}}/accounts/{{encryptedAccountNumber}}/orders?maxResults=100&fromEnteredTime=2024-01-01T00:00:00.000Z&toEnteredTime=2024-12-31T23:59:59.999Z&status=FILLED
+Authorization: Bearer {{RefreshAccessToken.response.body.$.access_token}}
+
+### Get All Orders for All Accounts (with filters)
+GET {{baseUrl}}/orders?maxResults=100&fromEnteredTime=2024-01-01T00:00:00.000Z&toEnteredTime=2024-12-31T23:59:59.999Z&status=FILLED
+Authorization: Bearer {{RefreshAccessToken.response.body.$.access_token}}
+
+@orderId = {{GetOrders.response.body.$[0].orderId}}
+
+### Get Specific Order by ID
+GET {{baseUrl}}/accounts/{{encryptedAccountNumber}}/orders/{{orderId}}
+Authorization: Bearer {{RefreshAccessToken.response.body.$.access_token}}
+
+### Place Order - Buy Market (Stock)
+# Buy 15 shares of XYZ at Market, good for the Day
+POST {{baseUrl}}/accounts/{{encryptedAccountNumber}}/orders
+Authorization: Bearer {{RefreshAccessToken.response.body.$.access_token}}
+Content-Type: application/json
+
+{
+  "orderType": "MARKET",
+  "session": "NORMAL",
+  "duration": "DAY",
+  "orderStrategyType": "SINGLE",
+  "orderLegCollection": [
+    {
+      "instruction": "BUY",
+      "quantity": 1,
+      "instrument": {
+        "symbol": "GLD",
+        "assetType": "EQUITY"
+      }
+    }
+  ]
+}
+
+### Place Order - Buy Limit (Stock)
+# Buy 10 shares of XYZ at limit price $50.00, good for the Day
+POST {{baseUrl}}/accounts/{{encryptedAccountNumber}}/orders
+Authorization: Bearer {{RefreshAccessToken.response.body.$.access_token}}
+Content-Type: application/json
+
+{
+  "orderType": "LIMIT",
+  "session": "NORMAL",
+  "price": "50.00",
+  "duration": "DAY",
+  "orderStrategyType": "SINGLE",
+  "orderLegCollection": [
+    {
+      "instruction": "BUY",
+      "quantity": 10,
+      "instrument": {
+        "symbol": "XYZ",
+        "assetType": "EQUITY"
+      }
+    }
+  ]
+}
+
+### Place Order - Sell Limit (Stock)
+# Sell 10 shares of XYZ at limit price $55.00, good till canceled
+POST {{baseUrl}}/accounts/{{encryptedAccountNumber}}/orders
+Authorization: Bearer {{RefreshAccessToken.response.body.$.access_token}}
+Content-Type: application/json
+
+{
+  "orderType": "LIMIT",
+  "session": "NORMAL",
+  "price": "55.00",
+  "duration": "GOOD_TILL_CANCEL",
+  "orderStrategyType": "SINGLE",
+  "orderLegCollection": [
+    {
+      "instruction": "SELL",
+      "quantity": 10,
+      "instrument": {
+        "symbol": "XYZ",
+        "assetType": "EQUITY"
+      }
+    }
+  ]
+}
+
+### Place Order - Stop Loss (Stock)
+# Sell 10 shares of XYZ with stop at $45.00, good for the Day
+POST {{baseUrl}}/accounts/{{encryptedAccountNumber}}/orders
+Authorization: Bearer {{RefreshAccessToken.response.body.$.access_token}}
+Content-Type: application/json
+
+{
+  "orderType": "STOP",
+  "session": "NORMAL",
+  "stopPrice": "45.00",
+  "duration": "DAY",
+  "orderStrategyType": "SINGLE",
+  "orderLegCollection": [
+    {
+      "instruction": "SELL",
+      "quantity": 10,
+      "instrument": {
+        "symbol": "XYZ",
+        "assetType": "EQUITY"
+      }
+    }
+  ]
+}
+
+### Place Order - Stop Limit (Stock)
+# Sell 10 shares of XYZ with stop at $45.00 and limit at $44.50
+POST {{baseUrl}}/accounts/{{encryptedAccountNumber}}/orders
+Authorization: Bearer {{RefreshAccessToken.response.body.$.access_token}}
+Content-Type: application/json
+
+{
+  "orderType": "STOP_LIMIT",
+  "session": "NORMAL",
+  "price": "44.50",
+  "stopPrice": "45.00",
+  "duration": "DAY",
+  "orderStrategyType": "SINGLE",
+  "orderLegCollection": [
+    {
+      "instruction": "SELL",
+      "quantity": 10,
+      "instrument": {
+        "symbol": "XYZ",
+        "assetType": "EQUITY"
+      }
+    }
+  ]
+}
+
+### Place Order - Trailing Stop (Stock)
+# Sell 10 shares of XYZ with trailing stop $10 below bid
+POST {{baseUrl}}/accounts/{{encryptedAccountNumber}}/orders
+Authorization: Bearer {{RefreshAccessToken.response.body.$.access_token}}
+Content-Type: application/json
+
+{
+  "complexOrderStrategyType": "NONE",
+  "orderType": "TRAILING_STOP",
+  "session": "NORMAL",
+  "stopPriceLinkBasis": "BID",
+  "stopPriceLinkType": "VALUE",
+  "stopPriceOffset": 10.00,
+  "duration": "DAY",
+  "orderStrategyType": "SINGLE",
+  "orderLegCollection": [
+    {
+      "instruction": "SELL",
+      "quantity": 10,
+      "instrument": {
+        "symbol": "XYZ",
+        "assetType": "EQUITY"
+      }
+    }
+  ]
+}
+
+### Place Order - Buy Option (Single Leg)
+# Buy to open 10 contracts of XYZ Mar 15 2024 $50 CALL at limit $6.45
+# Option symbol format: SYMBOL(6 chars) + EXPIRATION(6 chars YYMMDD) + C/P(1 char) + STRIKE(8 chars)
+# Example: "XYZ   240315C00050000" = XYZ, exp 2024-03-15, Call, $50.00 strike
+POST {{baseUrl}}/accounts/{{encryptedAccountNumber}}/orders
+Authorization: Bearer {{RefreshAccessToken.response.body.$.access_token}}
+Content-Type: application/json
+
+{
+  "complexOrderStrategyType": "NONE",
+  "orderType": "LIMIT",
+  "session": "NORMAL",
+  "price": "6.45",
+  "duration": "DAY",
+  "orderStrategyType": "SINGLE",
+  "orderLegCollection": [
+    {
+      "instruction": "BUY_TO_OPEN",
+      "quantity": 10,
+      "instrument": {
+        "symbol": "XYZ   240315C00050000",
+        "assetType": "OPTION"
+      }
+    }
+  ]
+}
+
+### Place Order - Vertical Put Spread (Options)
+# Buy 2 contracts XYZ Mar 15 2024 $45 Put, Sell 2 contracts $43 Put at net debit $0.10
+POST {{baseUrl}}/accounts/{{encryptedAccountNumber}}/orders
+Authorization: Bearer {{RefreshAccessToken.response.body.$.access_token}}
+Content-Type: application/json
+
+{
+  "orderType": "NET_DEBIT",
+  "session": "NORMAL",
+  "price": "0.10",
+  "duration": "DAY",
+  "orderStrategyType": "SINGLE",
+  "orderLegCollection": [
+    {
+      "instruction": "BUY_TO_OPEN",
+      "quantity": 2,
+      "instrument": {
+        "symbol": "XYZ   240315P00045000",
+        "assetType": "OPTION"
+      }
+    },
+    {
+      "instruction": "SELL_TO_OPEN",
+      "quantity": 2,
+      "instrument": {
+        "symbol": "XYZ   240315P00043000",
+        "assetType": "OPTION"
+      }
+    }
+  ]
+}
+
+### Place Order - One Triggers Another (Conditional)
+# Buy 10 shares XYZ at limit $34.97; if filled, sell 10 shares at limit $42.03
+POST {{baseUrl}}/accounts/{{encryptedAccountNumber}}/orders
+Authorization: Bearer {{RefreshAccessToken.response.body.$.access_token}}
+Content-Type: application/json
+
+{
+  "orderType": "LIMIT",
+  "session": "NORMAL",
+  "price": "34.97",
+  "duration": "DAY",
+  "orderStrategyType": "TRIGGER",
+  "orderLegCollection": [
+    {
+      "instruction": "BUY",
+      "quantity": 10,
+      "instrument": {
+        "symbol": "XYZ",
+        "assetType": "EQUITY"
+      }
+    }
+  ],
+  "childOrderStrategies": [
+    {
+      "orderType": "LIMIT",
+      "session": "NORMAL",
+      "price": "42.03",
+      "duration": "DAY",
+      "orderStrategyType": "SINGLE",
+      "orderLegCollection": [
+        {
+          "instruction": "SELL",
+          "quantity": 10,
+          "instrument": {
+            "symbol": "XYZ",
+            "assetType": "EQUITY"
+          }
+        }
+      ]
+    }
+  ]
+}
+
+### Place Order - One Cancels Another (OCO)
+# Sell 2 shares XYZ: either at limit $45.97 OR stop-limit $37.03/$37.00
+POST {{baseUrl}}/accounts/{{encryptedAccountNumber}}/orders
+Authorization: Bearer {{RefreshAccessToken.response.body.$.access_token}}
+Content-Type: application/json
+
+{
+  "orderStrategyType": "OCO",
+  "childOrderStrategies": [
+    {
+      "orderType": "LIMIT",
+      "session": "NORMAL",
+      "price": "45.97",
+      "duration": "DAY",
+      "orderStrategyType": "SINGLE",
+      "orderLegCollection": [
+        {
+          "instruction": "SELL",
+          "quantity": 2,
+          "instrument": {
+            "symbol": "XYZ",
+            "assetType": "EQUITY"
+          }
+        }
+      ]
+    },
+    {
+      "orderType": "STOP_LIMIT",
+      "session": "NORMAL",
+      "price": "37.00",
+      "stopPrice": "37.03",
+      "duration": "DAY",
+      "orderStrategyType": "SINGLE",
+      "orderLegCollection": [
+        {
+          "instruction": "SELL",
+          "quantity": 2,
+          "instrument": {
+            "symbol": "XYZ",
+            "assetType": "EQUITY"
+          }
+        }
+      ]
+    }
+  ]
+}
+
+### Preview Order - Buy Limit (Stock)
+# Preview an order before placing it to see estimated commissions and fees
+POST {{baseUrl}}/accounts/{{encryptedAccountNumber}}/previewOrder
+Authorization: Bearer {{RefreshAccessToken.response.body.$.access_token}}
+Content-Type: application/json
+
+{
+  "orderType": "LIMIT",
+  "session": "NORMAL",
+  "price": "50.00",
+  "duration": "DAY",
+  "orderStrategyType": "SINGLE",
+  "orderLegCollection": [
+    {
+      "instruction": "BUY",
+      "quantity": 10,
+      "instrument": {
+        "symbol": "XYZ",
+        "assetType": "EQUITY"
+      }
+    }
+  ]
+}
+
+### Replace Order
+# Replace an existing order with a modified version
+# The original order will be canceled and a new order created
+PUT {{baseUrl}}/accounts/{{encryptedAccountNumber}}/orders/{{orderId}}
+Authorization: Bearer {{RefreshAccessToken.response.body.$.access_token}}
+Content-Type: application/json
+
+{
+  "orderType": "LIMIT",
+  "session": "NORMAL",
+  "price": "51.00",
+  "duration": "DAY",
+  "orderStrategyType": "SINGLE",
+  "orderLegCollection": [
+    {
+      "instruction": "BUY",
+      "quantity": 10,
+      "instrument": {
+        "symbol": "XYZ",
+        "assetType": "EQUITY"
+      }
+    }
+  ]
+}
+
+### Cancel Order
+DELETE {{baseUrl}}/accounts/{{encryptedAccountNumber}}/orders/{{orderId}}
+Authorization: Bearer {{RefreshAccessToken.response.body.$.access_token}}
+
+###############################################################################
+# TRANSACTIONS ENDPOINTS
+###############################################################################
+
+### Get All Transactions for Specific Account
+# Optional query parameters: types, startDate, endDate, symbol
+# Maximum 3000 transactions, maximum 1 year date range
+GET {{baseUrl}}/accounts/{{encryptedAccountNumber}}/transactions
+Authorization: Bearer {{RefreshAccessToken.response.body.$.access_token}}
+
+### Get All Transactions (with filters)
+# types: comma-separated transaction types (e.g., TRADE,RECEIVE_AND_DELIVER,DIVIDEND)
+# startDate/endDate: ISO-8601 format (YYYY-MM-DDTHH:MM:SS.sssZ)
+# symbol: filter by specific symbol
+GET {{baseUrl}}/accounts/{{encryptedAccountNumber}}/transactions?types=TRADE,DIVIDEND&startDate=2024-01-01T00:00:00.000Z&endDate=2024-12-31T23:59:59.999Z&symbol=XYZ
+Authorization: Bearer {{RefreshAccessToken.response.body.$.access_token}}
+
+### Get Specific Transaction by ID
+GET {{baseUrl}}/accounts/{{encryptedAccountNumber}}/transactions/{{transactionId}}
+Authorization: Bearer {{RefreshAccessToken.response.body.$.access_token}}
+
+###############################################################################
+# USER PREFERENCE ENDPOINT
+###############################################################################
+
+### Get User Preferences
+# Retrieve user preferences including streamer info
+GET {{baseUrl}}/userPreference
+Authorization: Bearer {{RefreshAccessToken.response.body.$.access_token}}
+
+###############################################################################
+# NOTES AND REFERENCE
+###############################################################################
+
+# OAuth Token Lifetimes:
+# - Access Token: 30 minutes
+# - Refresh Token: 7 days
+
+# Order Types:
+# - MARKET, LIMIT, STOP, STOP_LIMIT, TRAILING_STOP, MARKET_ON_CLOSE, 
+#   LIMIT_ON_CLOSE, NET_DEBIT, NET_CREDIT, NET_ZERO
+
+# Order Duration:
+# - DAY, GOOD_TILL_CANCEL, FILL_OR_KILL, IMMEDIATE_OR_CANCEL
+
+# Session Types:
+# - NORMAL, AM, PM, SEAMLESS
+
+# Asset Types:
+# - EQUITY (stocks, ETFs)
+# - OPTION
+# - MUTUAL_FUND
+# - FIXED_INCOME
+# - CASH_EQUIVALENT
+# - INDEX
+# - CURRENCY
+# - FOREX
+# - FUTURE
+# - COLLECTIVE_INVESTMENT
+
+# Instructions for EQUITY:
+# - BUY, SELL, BUY_TO_COVER, SELL_SHORT
+
+# Instructions for OPTION:
+# - BUY_TO_OPEN, BUY_TO_CLOSE, SELL_TO_OPEN, SELL_TO_CLOSE
+
+# Option Symbol Format:
+# - Underlying Symbol: 6 characters (padded with spaces if needed)
+# - Expiration Date: 6 characters (YYMMDD format)
+# - Call/Put: 1 character (C or P)
+# - Strike Price: 8 characters (5 digits + 3 decimals, e.g., 00050000 = $50.00)
+#
+# Examples:
+# - XYZ   240315C00050000 = XYZ $50 Call expiring March 15, 2024
+# - AAPL  241220P00150000 = AAPL $150 Put expiring December 20, 2024
+# - SPY   250117C00500000 = SPY $500 Call expiring January 17, 2025
+
+# Order Status Values:
+# - AWAITING_PARENT_ORDER, AWAITING_CONDITION, AWAITING_STOP_CONDITION,
+#   AWAITING_MANUAL_REVIEW, ACCEPTED, AWAITING_UR_OUT, PENDING_ACTIVATION,
+#   QUEUED, WORKING, REJECTED, PENDING_CANCEL, CANCELED, PENDING_REPLACE,
+#   REPLACED, FILLED, EXPIRED, NEW, AWAITING_RELEASE_TIME, PENDING_ACKNOWLEDGEMENT,
+#   PENDING_RECALL, UNKNOWN
+
+# Transaction Types:
+# - TRADE, RECEIVE_AND_DELIVER, DIVIDEND_OR_INTEREST, ACH_RECEIPT, 
+#   ACH_DISBURSEMENT, CASH_RECEIPT, CASH_DISBURSEMENT, ELECTRONIC_FUND,
+#   WIRE_OUT, WIRE_IN, JOURNAL, MEMORANDUM, MARGIN_CALL, MONEY_MARKET,
+#   SMA_ADJUSTMENT
+
+# Rate Limits:
+# - Order requests (POST/PUT/DELETE): 0-120 requests per minute per account
+# - Get order requests: Unthrottled
+# - Contact TraderAPI@Schwab.com for throttle limit information
+
+###############################################################################

@@ -19,6 +19,10 @@ out/
 .env.test.local
 .env.production.local
 
+# REST Client private environment files
+http-client.private.env.json
+**/http-client.private.env.json
+
 # IDEs and Editors
 .idea/
 .vscode/
