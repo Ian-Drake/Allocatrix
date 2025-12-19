@@ -3,8 +3,25 @@ from __future__ import annotations
 import argparse
 import sys
 from dataclasses import dataclass
+from pathlib import Path
 
 from baytrader.fetch import FetchArgs, run_fetch
+
+
+def _maybe_load_dotenv() -> None:
+    """Load repo-local .env into process env (dev ergonomics).
+
+    Python does not automatically read .env files. We load `.env` if present.
+    """
+
+    try:
+        from dotenv import load_dotenv
+    except ImportError:
+        return
+
+    env_path = Path(".env")
+    if env_path.exists():
+        load_dotenv(dotenv_path=env_path, override=False)
 
 
 @dataclass(frozen=True)
@@ -100,6 +117,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> int:
+    _maybe_load_dotenv()
     parser = build_parser()
     args = parser.parse_args(argv)
 
