@@ -1,0 +1,56 @@
+[build-system]
+requires = ["hatchling>=1.24"]
+build-backend = "hatchling.build"
+
+[project]
+name = "baytrader"
+version = "0.0.0"
+description = "BayTrader MVP (TCN → Diffusion)"
+readme = "SPEC.md"
+requires-python = ">=3.11,<3.12"
+authors = [{ name = "BayTrader" }]
+dependencies = [
+  "httpx>=0.27",
+  "matplotlib>=3.8",
+  "numpy>=1.26",
+  "pandas>=2.2",
+  "pyarrow>=16.0",
+  "pydantic>=2.7",
+  "scikit-learn>=1.5",
+  "torch>=2.2",
+  "tqdm>=4.66",
+]
+
+[dependency-groups]
+dev = [
+  "pytest>=8.3",
+  "ruff>=0.6",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/baytrader"]
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+src = ["src", "tests"]
+exclude = [
+  ".venv",
+  "data_cache",
+  "artifacts",
+  "outputs",
+  "notebooks",
+]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "auto"
