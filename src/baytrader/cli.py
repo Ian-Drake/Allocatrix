@@ -4,6 +4,8 @@ import argparse
 import sys
 from dataclasses import dataclass
 
+from baytrader.fetch import FetchArgs, run_fetch
+
 
 @dataclass(frozen=True)
 class GlobalArgs:
@@ -31,8 +33,47 @@ def build_parser() -> argparse.ArgumentParser:
 
     sub = parser.add_subparsers(dest="command", required=True)
 
-    p_fetch = sub.add_parser("fetch", help="Fetch and cache Polygon bars (stub).")
-    p_fetch.set_defaults(_handler=lambda g, a: _handle_stub("fetch", g, a))
+    p_fetch = sub.add_parser("fetch", help="Fetch and cache 1m bars via Massive flat files.")
+    p_fetch.add_argument(
+        "--symbols",
+        required=True,
+        help="Comma-separated symbols, e.g. MSFT,VGT,SPY,TLT,VIX",
+    )
+    p_fetch.add_argument("--start", required=True, help="Start date (YYYY-MM-DD)")
+    p_fetch.add_argument("--end", required=True, help="End date (YYYY-MM-DD)")
+    p_fetch.add_argument(
+        "--cache-dir",
+        default="data_cache",
+        help="Cache directory for partitioned parquet output (default: data_cache)",
+    )
+    p_fetch.add_argument(
+        "--dataset",
+        default="us_stocks_sip/minute_aggs_v1",
+        help="Flat-files dataset prefix inside the bucket (default: us_stocks_sip/minute_aggs_v1)",
+    )
+    p_fetch.add_argument(
+        "--format",
+        default="auto",
+        choices=["auto", "csv", "csv.gz", "parquet"],
+        help="Flat-file format to expect (default: auto)",
+    )
+
+    def _run_fetch(g: GlobalArgs, a: argparse.Namespace) -> int:
+        _ = g
+        symbols = [s.strip() for s in str(a.symbols).split(",") if s.strip()]
+        from baytrader.fetch import _parse_date  # local import to keep CLI lean
+
+        fargs = FetchArgs(
+            symbols=symbols,
+            start=_parse_date(str(a.start)),
+            end=_parse_date(str(a.end)),
+            cache_dir=str(a.cache_dir),
+            dataset=str(a.dataset),
+            file_format=str(a.format),
+        )
+        return run_fetch(args=fargs)
+
+    p_fetch.set_defaults(_handler=_run_fetch)
 
     p_build = sub.add_parser("build-dataset", help="Build aligned dataset files (stub).")
     p_build.set_defaults(_handler=lambda g, a: _handle_stub("build-dataset", g, a))

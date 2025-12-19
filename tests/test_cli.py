@@ -21,7 +21,6 @@ def test_cli_help_exits_zero() -> None:
 
 def test_cli_subcommands_stub_messages() -> None:
     commands = [
-        "fetch",
         "build-dataset",
         "train-tcn",
         "train-diffusion",
@@ -34,3 +33,9 @@ def test_cli_subcommands_stub_messages() -> None:
         proc = _run("--seed", "123", cmd)
         assert proc.returncode == 0
         assert f"[stub] {cmd} (seed=123)" in proc.stdout
+
+
+def test_fetch_help_exists() -> None:
+    proc = _run("fetch", "--help")
+    assert proc.returncode == 0
+    assert "--symbols" in proc.stdout
