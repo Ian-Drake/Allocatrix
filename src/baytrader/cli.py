@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 from dataclasses import dataclass
 from pathlib import Path
 
+from baytrader.download import DownloadArgs, run_download
 from baytrader.fetch import FetchArgs, run_fetch
 
 
@@ -50,7 +52,46 @@ def build_parser() -> argparse.ArgumentParser:
 
     sub = parser.add_subparsers(dest="command", required=True)
 
-    p_fetch = sub.add_parser("fetch", help="Fetch and cache 1m bars via Massive flat files.")
+    p_download = sub.add_parser(
+        "download",
+        help="Download Massive flat-files into DATA_PATH (raw, no processing).",
+    )
+    p_download.add_argument("--start", required=True, help="Start date (YYYY-MM-DD)")
+    p_download.add_argument("--end", required=True, help="End date (YYYY-MM-DD)")
+    p_download.add_argument(
+        "--dataset",
+        default="us_stocks_sip/minute_aggs_v1",
+        help="Dataset prefix to download (default: us_stocks_sip/minute_aggs_v1)",
+    )
+    p_download.add_argument(
+        "--format",
+        default="csv.gz",
+        choices=["auto", "csv", "csv.gz", "parquet"],
+        help="Flat-file format to download (default: csv.gz)",
+    )
+
+    def _run_download(g: GlobalArgs, a: argparse.Namespace) -> int:
+        _ = g
+        from baytrader.download import _parse_date
+
+        data_path = (Path(os.environ.get("DATA_PATH", "")).expanduser()).resolve()
+        if not str(data_path) or str(data_path) == str(Path(".").resolve()):
+            raise SystemExit(
+                "DATA_PATH is not set. Add DATA_PATH=<folder> to your .env file."
+            )
+
+        dargs = DownloadArgs(
+            start=_parse_date(str(a.start)),
+            end=_parse_date(str(a.end)),
+            data_path=data_path,
+            dataset=str(a.dataset),
+            file_format=str(a.format),  # type: ignore[arg-type]
+        )
+        return run_download(args=dargs)
+
+    p_download.set_defaults(_handler=_run_download)
+
+    p_fetch = sub.add_parser("fetch", help="Fetch and cache 1m bars from local DATA_PATH.")
     p_fetch.add_argument(
         "--symbols",
         default="",
@@ -160,7 +201,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_gpu.set_defaults(_handler=lambda g, a: _handle_stub("gpu-check", g, a))
 
     # silence unused-variable warnings without affecting runtime
-    _ = (p_fetch, p_build, p_train_tcn, p_train_diff, p_predict, p_wf, p_gpu)
+    _ = (p_download, p_fetch, p_build, p_train_tcn, p_train_diff, p_predict, p_wf, p_gpu)
 
     return parser
 

@@ -41,3 +41,10 @@ def test_fetch_help_exists() -> None:
     assert "--symbols" in proc.stdout
     assert "--object-keys" in proc.stdout
     assert "--list-prefix" in proc.stdout
+
+
+def test_download_help_exists() -> None:
+    proc = _run("download", "--help")
+    assert proc.returncode == 0
+    assert "--start" in proc.stdout
+    assert "--end" in proc.stdout

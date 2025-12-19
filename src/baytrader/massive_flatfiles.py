@@ -329,6 +329,8 @@ class MassiveFlatFilesClient:
             )
         except ClientError as e:
             code = str(e.response.get("Error", {}).get("Code", ""))
+            if code in {"404", "NoSuchKey", "NotFound"}:
+                raise FileNotFoundError(key) from e
             if code in {"403", "AccessDenied", "Forbidden"}:
                 raise PermissionError(
                     "Massive S3 returned Forbidden (403) for GetObject. "

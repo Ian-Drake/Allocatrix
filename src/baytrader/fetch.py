@@ -1,13 +1,16 @@
 from __future__ import annotations
 
 import datetime as dt
+import gzip
+import os
 import re
 from dataclasses import dataclass
 from pathlib import Path
 
+import pandas as pd
+
 from baytrader.cache import normalize_flatfiles_chunk, write_many_symbol_day
-from baytrader.massive_flatfiles import MassiveFlatFilesClient, MassiveS3Config
-from baytrader.polygon_client import PolygonClient, PolygonFlatFilesSettings
+from baytrader.massive_flatfiles import FlatFileFormat
 
 
 def _parse_date(s: str) -> dt.date:
@@ -38,6 +41,102 @@ class FetchArgs:
     list_max: int
 
 
+def _data_path_from_env() -> Path:
+    p = os.environ.get("DATA_PATH", "").strip()
+    if not p:
+        raise RuntimeError("DATA_PATH is not set. Add DATA_PATH=<folder> to your .env file.")
+    return Path(p).expanduser().resolve()
+
+
+def _resolve_local_daily_file(
+    *,
+    data_path: Path,
+    dataset: str,
+    day: dt.date,
+    file_format: FlatFileFormat,
+) -> tuple[Path, FlatFileFormat]:
+    dataset = dataset.strip().strip("/")
+    yyyy = day.year
+    mm = day.month
+    day_str = day.strftime("%Y-%m-%d")
+
+    candidates: list[tuple[Path, FlatFileFormat]] = []
+    if file_format in {"auto", "csv.gz"}:
+        candidates.append(
+            (data_path / dataset / f"{yyyy}" / f"{mm:02d}" / f"{day_str}.csv.gz", "csv.gz")
+        )
+    if file_format in {"auto", "csv"}:
+        candidates.append(
+            (data_path / dataset / f"{yyyy}" / f"{mm:02d}" / f"{day_str}.csv", "csv")
+        )
+    if file_format in {"auto", "parquet"}:
+        candidates.append(
+            (data_path / dataset / f"{yyyy}" / f"{mm:02d}" / f"{day_str}.parquet", "parquet")
+        )
+
+    for path, fmt in candidates:
+        if path.exists():
+            return path, fmt
+
+    raise FileNotFoundError(str(candidates[0][0]) if candidates else day_str)
+
+
+def _iter_local_file_minute_aggs(
+    *,
+    path: Path,
+    resolved_fmt: FlatFileFormat,
+    symbols: list[str],
+    chunksize: int = 500_000,
+):
+    sym_set = {s.strip().upper() for s in symbols if s.strip()}
+    if not sym_set:
+        return
+
+    if resolved_fmt in {"csv", "csv.gz"}:
+        if resolved_fmt == "csv.gz":
+            with gzip.open(path, "rb") as f:
+                for chunk in pd.read_csv(f, chunksize=int(chunksize)):
+                    cols_lower = {c.lower(): c for c in chunk.columns}
+                    ticker_col = cols_lower.get("ticker") or cols_lower.get("symbol")
+                    if ticker_col is None:
+                        raise ValueError(
+                            "CSV schema missing 'ticker'/'symbol' column. "
+                            f"Columns: {list(chunk.columns)}"
+                        )
+                    filtered = chunk[chunk[ticker_col].astype(str).str.upper().isin(sym_set)]
+                    if len(filtered) > 0:
+                        yield filtered
+        else:
+            for chunk in pd.read_csv(path, chunksize=int(chunksize)):
+                cols_lower = {c.lower(): c for c in chunk.columns}
+                ticker_col = cols_lower.get("ticker") or cols_lower.get("symbol")
+                if ticker_col is None:
+                    raise ValueError(
+                        "CSV schema missing 'ticker'/'symbol' column. "
+                        f"Columns: {list(chunk.columns)}"
+                    )
+                filtered = chunk[chunk[ticker_col].astype(str).str.upper().isin(sym_set)]
+                if len(filtered) > 0:
+                    yield filtered
+        return
+
+    if resolved_fmt == "parquet":
+        df = pd.read_parquet(path)
+        cols_lower = {c.lower(): c for c in df.columns}
+        ticker_col = cols_lower.get("ticker") or cols_lower.get("symbol")
+        if ticker_col is None:
+            raise ValueError(
+                "Parquet schema missing 'ticker'/'symbol' column. "
+                f"Columns: {list(df.columns)}"
+            )
+        filtered = df[df[ticker_col].astype(str).str.upper().isin(sym_set)]
+        if len(filtered) > 0:
+            yield filtered
+        return
+
+    raise ValueError(f"Unsupported resolved format: {resolved_fmt}")
+
+
 _DATE_RE = re.compile(r"(\d{4}-\d{2}-\d{2})")
 
 
@@ -55,30 +154,22 @@ def run_fetch(*, args: FetchArgs) -> int:
     cache_dir = Path(args.cache_dir)
     cache_dir.mkdir(parents=True, exist_ok=True)
 
-    settings = PolygonFlatFilesSettings(dataset=args.dataset, file_format=args.file_format)  # type: ignore[arg-type]
-    client = PolygonClient(settings=settings)
-    massive = MassiveFlatFilesClient(MassiveS3Config.from_env())
+    data_path = _data_path_from_env()
 
     symbols = [s.strip().upper() for s in args.symbols if s.strip()]
 
     if args.list_prefix:
-        try:
-            keys = massive.list_keys(prefix=args.list_prefix)
-        except Exception as e:
-            # Most commonly: botocore.exceptions.ClientError with 403 Forbidden
-            print(
-                "Could not list keys (often Forbidden on limited tiers). "
-                "Use the Massive File Browser to copy a specific object key and pass it via "
-                "--object-keys."
-            )
-            print(f"Error: {type(e).__name__}: {e}")
+        root = data_path / args.list_prefix
+        if not root.exists():
+            print(f"No such prefix under DATA_PATH: {root}")
             return 1
-
-        shown = keys[: max(0, int(args.list_max))]
-        for k in shown:
-            print(k)
-        if len(keys) > len(shown):
-            print(f"... ({len(keys) - len(shown)} more)")
+        files = sorted([p for p in root.rglob("*") if p.is_file()])
+        shown = files[: max(0, int(args.list_max))]
+        for p in shown:
+            rel = p.relative_to(data_path)
+            print(str(rel).replace("\\", "/"))
+        if len(files) > len(shown):
+            print(f"... ({len(files) - len(shown)} more)")
         return 0
 
     if args.object_keys:
@@ -96,17 +187,31 @@ def run_fetch(*, args: FetchArgs) -> int:
                     f"{key}. Provide keys that include the trading day."
                 )
 
-            try:
-                raw_chunks = list(
-                    massive.iter_object_minute_aggs(
-                        key=key,
-                        symbols=symbols,
-                        file_format=args.file_format,  # type: ignore[arg-type]
-                    )
+            local_path = data_path / key
+            if not local_path.exists():
+                print(f"[missing] {key} (not found under DATA_PATH)")
+                continue
+
+            resolved_fmt: FlatFileFormat
+            key_lower = key.lower()
+            if str(args.file_format) != "auto":
+                resolved_fmt = str(args.file_format)  # type: ignore[assignment]
+            elif key_lower.endswith(".csv.gz"):
+                resolved_fmt = "csv.gz"
+            elif key_lower.endswith(".csv"):
+                resolved_fmt = "csv"
+            elif key_lower.endswith(".parquet"):
+                resolved_fmt = "parquet"
+            else:
+                resolved_fmt = "csv.gz"
+
+            raw_chunks = list(
+                _iter_local_file_minute_aggs(
+                    path=local_path,
+                    resolved_fmt=resolved_fmt,
+                    symbols=symbols,
                 )
-            except PermissionError as e:
-                print(f"[forbidden] {key} ({e})")
-                return 1
+            )
             normalized = [normalize_flatfiles_chunk(c) for c in raw_chunks]
             out_paths = write_many_symbol_day(
                 base_dir=cache_dir,
@@ -127,14 +232,24 @@ def run_fetch(*, args: FetchArgs) -> int:
 
     for day in days:
         try:
-            raw_chunks = client.iter_minute_aggs(day=day, symbols=symbols)
-        except PermissionError as e:
-            print(f"[forbidden] {day.isoformat()} ({e})")
-            return 1
+            local_path, resolved_fmt = _resolve_local_daily_file(
+                data_path=data_path,
+                dataset=args.dataset,
+                day=day,
+                file_format=str(args.file_format),  # type: ignore[arg-type]
+            )
         except FileNotFoundError:
             missing_days += 1
             print(f"[missing] {day.isoformat()} (no flat-file found)")
             continue
+
+        raw_chunks = list(
+            _iter_local_file_minute_aggs(
+                path=local_path,
+                resolved_fmt=resolved_fmt,
+                symbols=symbols,
+            )
+        )
 
         normalized = [normalize_flatfiles_chunk(c) for c in raw_chunks]
         out_paths = write_many_symbol_day(

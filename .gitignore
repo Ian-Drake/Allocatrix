@@ -28,6 +28,9 @@ data_cache/
 artifacts/
 outputs/
 
+# Default raw flat-files download location (configured via DATA_PATH)
+flatfiles/
+
 # Parquet/Arrow temp
 *.parquet
 *.arrow
