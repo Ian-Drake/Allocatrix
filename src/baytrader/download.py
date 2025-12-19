@@ -118,7 +118,7 @@ def run_download(*, args: DownloadArgs, s3_client=None) -> int:
 
     local_root = _local_temp_root()
 
-    days = _daterange(args.start, args.end)
+    days = list(reversed(_daterange(args.start, args.end)))
     print(f"Downloading {len(days)} day(s) into {args.data_path}...")
 
     accessible = 0
