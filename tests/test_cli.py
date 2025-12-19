@@ -39,3 +39,5 @@ def test_fetch_help_exists() -> None:
     proc = _run("fetch", "--help")
     assert proc.returncode == 0
     assert "--symbols" in proc.stdout
+    assert "--object-keys" in proc.stdout
+    assert "--list-prefix" in proc.stdout

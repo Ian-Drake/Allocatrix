@@ -37,8 +37,9 @@ class _FakeS3:
     def set_get_failures(self, key: str, failures: list[Exception]) -> None:
         self._get_failures[key] = list(failures)
 
-    def get_object(self, *, Bucket: str, Key: str):  # noqa: N802
+    def get_object(self, *, Bucket: str, Key: str, Range: str | None = None):  # noqa: N802
         _ = Bucket
+        _ = Range
         failures = self._get_failures.get(Key)
         if failures and len(failures) > 0:
             raise failures.pop(0)
@@ -49,7 +50,13 @@ class _FakeS3:
             )
         return {"Body": io.BytesIO(self._objects[Key])}
 
-    def list_objects_v2(self, *, Bucket: str, Prefix: str, ContinuationToken: str | None = None):  # noqa: N802
+    def list_objects_v2(
+        self,
+        *,
+        Bucket: str,
+        Prefix: str,
+        ContinuationToken: str | None = None,
+    ):  # noqa: N802
         _ = Bucket
         pages = self._list_pages.get(Prefix)
         if pages is None:
@@ -66,6 +73,27 @@ class _FakeS3:
 
         page = pages[idx]
         return page
+
+
+def test_head_403_is_non_fatal() -> None:
+    cfg = MassiveS3Config(
+        endpoint_url="https://files.massive.com",
+        bucket="flatfiles",
+        access_key_id="x",
+        secret_access_key="y",
+    )
+
+    class _S3(_FakeS3):
+        def head_object(self, *, Bucket: str, Key: str):  # noqa: N802
+            _ = Bucket
+            _ = Key
+            raise ClientError(
+                {"Error": {"Code": "403", "Message": "Forbidden"}},
+                operation_name="HeadObject",
+            )
+
+    client = MassiveFlatFilesClient(cfg, s3_client=_S3(), max_retries=1)
+    assert client._head_exists("any/key") is False
 
 
 def test_resolve_daily_key_tries_patterns() -> None:

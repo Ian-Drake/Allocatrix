@@ -53,11 +53,35 @@ def build_parser() -> argparse.ArgumentParser:
     p_fetch = sub.add_parser("fetch", help="Fetch and cache 1m bars via Massive flat files.")
     p_fetch.add_argument(
         "--symbols",
-        required=True,
+        default="",
         help="Comma-separated symbols, e.g. MSFT,VGT,SPY,TLT,VIX",
     )
-    p_fetch.add_argument("--start", required=True, help="Start date (YYYY-MM-DD)")
-    p_fetch.add_argument("--end", required=True, help="End date (YYYY-MM-DD)")
+    p_fetch.add_argument("--start", default="", help="Start date (YYYY-MM-DD)")
+    p_fetch.add_argument("--end", default="", help="End date (YYYY-MM-DD)")
+    p_fetch.add_argument(
+        "--object-keys",
+        default="",
+        help=(
+            "Optional comma-separated S3 object keys to download directly (Massive flat files), "
+            "e.g. us_stocks_sip/minute_aggs_v1/2025/12/2025-12-16.csv.gz. "
+            "If provided, these are used instead of --start/--end discovery."
+        ),
+    )
+    p_fetch.add_argument(
+        "--list-prefix",
+        default="",
+        help=(
+            "Optional S3 prefix to list available flat-files keys (Massive workflow), "
+            "e.g. us_stocks_sip/ or us_stocks_sip/minute_aggs_v1/2025/12/. "
+            "If provided, prints keys and exits."
+        ),
+    )
+    p_fetch.add_argument(
+        "--list-max",
+        type=int,
+        default=200,
+        help="Max keys to print when using --list-prefix (default: 200)",
+    )
     p_fetch.add_argument(
         "--cache-dir",
         default="data_cache",
@@ -80,13 +104,38 @@ def build_parser() -> argparse.ArgumentParser:
         symbols = [s.strip() for s in str(a.symbols).split(",") if s.strip()]
         from baytrader.fetch import _parse_date  # local import to keep CLI lean
 
+        object_keys = [k.strip() for k in str(a.object_keys).split(",") if k.strip()]
+        list_prefix = str(a.list_prefix).strip()
+
+        if list_prefix:
+            # Listing doesn't require symbols or date args.
+            start = _parse_date("1970-01-01")
+            end = _parse_date("1970-01-01")
+        elif object_keys:
+            if not symbols:
+                raise SystemExit("--symbols is required when using --object-keys")
+            start = _parse_date("1970-01-01")
+            end = _parse_date("1970-01-01")
+        else:
+            if not symbols:
+                raise SystemExit("--symbols is required")
+            if not str(a.start).strip() or not str(a.end).strip():
+                raise SystemExit(
+                    "--start and --end are required unless using --object-keys or --list-prefix"
+                )
+            start = _parse_date(str(a.start))
+            end = _parse_date(str(a.end))
+
         fargs = FetchArgs(
             symbols=symbols,
-            start=_parse_date(str(a.start)),
-            end=_parse_date(str(a.end)),
+            start=start,
+            end=end,
             cache_dir=str(a.cache_dir),
             dataset=str(a.dataset),
             file_format=str(a.format),
+            object_keys=object_keys,
+            list_prefix=list_prefix,
+            list_max=int(a.list_max),
         )
         return run_fetch(args=fargs)
 
@@ -128,7 +177,11 @@ def main(argv: list[str] | None = None) -> int:
         parser.error("No command handler configured.")
         return 2
 
-    return int(handler(g, args))
+    try:
+        return int(handler(g, args))
+    except PermissionError as e:
+        print(f"Error: {e}")
+        return 1
 
 
 if __name__ == "__main__":

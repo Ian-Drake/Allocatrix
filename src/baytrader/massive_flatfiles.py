@@ -96,12 +96,14 @@ class MassiveFlatFilesClient:
                 aws_secret_access_key=cfg.secret_access_key,
                 region_name=cfg.region_name,
                 config=Config(
+                    signature_version="s3v4",
                     s3={"addressing_style": "path"},
                     retries={"max_attempts": 1, "mode": "standard"},
                 ),
             )
 
         self._s3 = s3_client
+        self._saw_forbidden = False
 
     @property
     def bucket(self) -> str:
@@ -143,7 +145,40 @@ class MassiveFlatFilesClient:
             return True
         except ClientError as e:
             code = str(e.response.get("Error", {}).get("Code", ""))
-            if code in {"404", "NoSuchKey", "NotFound"}:
+            # Some S3-compatible gateways return 403 for missing keys or disallow HEAD.
+            # Treat these as "does not exist" so we can fall back to listing or GET probing.
+            if code in {"404", "NoSuchKey", "NotFound", "403", "AccessDenied", "Forbidden"}:
+                if code in {"403", "AccessDenied", "Forbidden"}:
+                    self._saw_forbidden = True
+                return False
+            raise
+
+    def _get_range_exists(self, key: str) -> bool:
+        """Probe object existence with a 1-byte ranged GET.
+
+        This is a fallback for endpoints that disallow HEAD or return 403 for missing keys.
+        """
+
+        def _get():
+            return self._s3.get_object(Bucket=self.bucket, Key=key, Range="bytes=0-0")
+
+        try:
+            resp = self._call_with_retries(
+                _get,
+                retriable_error_codes={"SlowDown", "Throttling", "RequestTimeout"},
+            )
+            body = resp.get("Body")
+            if body is not None:
+                try:
+                    body.close()
+                except Exception:  # pragma: no cover
+                    pass
+            return True
+        except ClientError as e:
+            code = str(e.response.get("Error", {}).get("Code", ""))
+            if code in {"404", "NoSuchKey", "NotFound", "403", "AccessDenied", "Forbidden"}:
+                if code in {"403", "AccessDenied", "Forbidden"}:
+                    self._saw_forbidden = True
                 return False
             raise
 
@@ -226,6 +261,11 @@ class MassiveFlatFilesClient:
             if self._head_exists(key):
                 return key, fmt
 
+        # If HEAD is blocked, attempt a lightweight ranged GET probe.
+        for key, fmt in candidates:
+            if self._get_range_exists(key):
+                return key, fmt
+
         # Fallback: list and search (handles dataset layouts we didn't guess).
         # This also satisfies the "pagination" requirement for flat-file access.
         search_prefixes = [
@@ -246,7 +286,10 @@ class MassiveFlatFilesClient:
         for prefix in search_prefixes:
             try:
                 keys = self.list_keys(prefix=prefix)
-            except ClientError:
+            except ClientError as e:
+                code = str(e.response.get("Error", {}).get("Code", ""))
+                if code in {"403", "AccessDenied", "Forbidden"}:
+                    self._saw_forbidden = True
                 continue
 
             matches = [k for k in keys if any(k.endswith(sfx) for sfx in suffixes)]
@@ -261,6 +304,15 @@ class MassiveFlatFilesClient:
             if key.endswith(".parquet"):
                 return key, "parquet"
 
+        if self._saw_forbidden:
+            raise PermissionError(
+                "Massive S3 returned Forbidden (403) during key discovery. "
+                "This usually means your subscription doesn't include this dataset/prefix, "
+                "or the endpoint disallows HEAD/LIST for your plan. "
+                "Use the Massive File Browser to find a key you can access, then run fetch with "
+                "--object-keys <key>, or run `fetch --list-prefix us_stocks_sip/` to explore."
+            )
+
         raise FileNotFoundError(
             f"No flat-file found for {day_str} in dataset '{dataset}'. "
             f"Tried {len(candidates)} key patterns." 
@@ -270,41 +322,79 @@ class MassiveFlatFilesClient:
         def _get():
             return self._s3.get_object(Bucket=self.bucket, Key=key)
 
-        resp = self._call_with_retries(
-            _get,
-            retriable_error_codes={"SlowDown", "Throttling", "RequestTimeout"},
-        )
+        try:
+            resp = self._call_with_retries(
+                _get,
+                retriable_error_codes={"SlowDown", "Throttling", "RequestTimeout"},
+            )
+        except ClientError as e:
+            code = str(e.response.get("Error", {}).get("Code", ""))
+            if code in {"403", "AccessDenied", "Forbidden"}:
+                raise PermissionError(
+                    "Massive S3 returned Forbidden (403) for GetObject. "
+                    "This usually means your plan/tier doesn't include access to this flat file, "
+                    "or the object key/prefix is outside your subscription. "
+                    "Confirm you have Flat Files access, then copy an accessible object key from "
+                    "the Massive File Browser and pass it via --object-keys."
+                ) from e
+            raise
         body = resp["Body"]
         return body
 
-    def iter_daily_minute_aggs(
+    def iter_object_minute_aggs(
         self,
         *,
-        dataset: str,
-        day: dt.date,
+        key: str,
         symbols: Sequence[str],
         file_format: FlatFileFormat = "auto",
         chunksize: int = 500_000,
     ) -> Iterable[pd.DataFrame]:
-        key, resolved_fmt = self.resolve_daily_key(
-            dataset=dataset, day=day, file_format=file_format
-        )
-        stream = self.get_object_stream(key)
+        """Iterate aggregate rows from a specific object key.
 
+        Massive's quickstart examples commonly download by explicit object key,
+        e.g. `us_stocks_sip/trades_v1/2025/11/2025-11-05.csv.gz`.
+        """
+
+        key_lower = key.lower()
+        resolved_fmt: FlatFileFormat
+        if file_format != "auto":
+            resolved_fmt = file_format
+        elif key_lower.endswith(".csv.gz"):
+            resolved_fmt = "csv.gz"
+        elif key_lower.endswith(".csv"):
+            resolved_fmt = "csv"
+        elif key_lower.endswith(".parquet"):
+            resolved_fmt = "parquet"
+        else:
+            # Default to gzip CSV as per Massive docs.
+            resolved_fmt = "csv.gz"
+
+        stream = self.get_object_stream(key)
+        yield from self._iter_stream_minute_aggs(
+            stream=stream,
+            resolved_fmt=resolved_fmt,
+            symbols=symbols,
+            chunksize=chunksize,
+        )
+
+    def _iter_stream_minute_aggs(
+        self,
+        *,
+        stream: IO[bytes],
+        resolved_fmt: FlatFileFormat,
+        symbols: Sequence[str],
+        chunksize: int,
+    ) -> Iterable[pd.DataFrame]:
         sym_set = {s.strip().upper() for s in symbols if s.strip()}
         if not sym_set:
             return
 
         if resolved_fmt in {"csv", "csv.gz"}:
-            # Stream + filter in chunks to avoid loading an entire day into memory.
             if resolved_fmt == "csv.gz":
-                # boto3 provides a streaming body; wrap in GzipFile for pandas.
                 fileobj: IO[bytes] = gzip.GzipFile(fileobj=stream)  # type: ignore[arg-type]
             else:
                 fileobj = stream
 
-            # Heuristic: Polygon flat files usually use 'ticker' and 'window_start'.
-            # We don't assume a strict schema; we'll normalize in cache layer.
             for chunk in pd.read_csv(fileobj, chunksize=int(chunksize)):
                 cols_lower = {c.lower(): c for c in chunk.columns}
                 ticker_col = cols_lower.get("ticker") or cols_lower.get("symbol")
@@ -319,8 +409,6 @@ class MassiveFlatFilesClient:
             return
 
         if resolved_fmt == "parquet":
-            # Read parquet from bytes; day-level files might still be large,
-            # but parquet is columnar.
             data = stream.read()
             buf = io.BytesIO(data)
             df = pd.read_parquet(buf)
@@ -328,7 +416,8 @@ class MassiveFlatFilesClient:
             ticker_col = cols_lower.get("ticker") or cols_lower.get("symbol")
             if ticker_col is None:
                 raise ValueError(
-                    f"Parquet schema missing 'ticker'/'symbol' column. Columns: {list(df.columns)}"
+                    "Parquet schema missing 'ticker'/'symbol' column. "
+                    f"Columns: {list(df.columns)}"
                 )
             filtered = df[df[ticker_col].astype(str).str.upper().isin(sym_set)]
             if len(filtered) > 0:
@@ -336,3 +425,23 @@ class MassiveFlatFilesClient:
             return
 
         raise ValueError(f"Unsupported resolved format: {resolved_fmt}")
+
+    def iter_daily_minute_aggs(
+        self,
+        *,
+        dataset: str,
+        day: dt.date,
+        symbols: Sequence[str],
+        file_format: FlatFileFormat = "auto",
+        chunksize: int = 500_000,
+    ) -> Iterable[pd.DataFrame]:
+        key, resolved_fmt = self.resolve_daily_key(
+            dataset=dataset, day=day, file_format=file_format
+        )
+        stream = self.get_object_stream(key)
+        yield from self._iter_stream_minute_aggs(
+            stream=stream,
+            resolved_fmt=resolved_fmt,
+            symbols=symbols,
+            chunksize=chunksize,
+        )
