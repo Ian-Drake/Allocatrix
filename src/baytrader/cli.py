@@ -54,7 +54,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     p_download = sub.add_parser(
         "download",
-        help="Download Massive flat-files into DATA_PATH (raw, no processing).",
+        help="Download Massive flat-files into DATA_PATH, filter to Universe.CSV, and write daily parquet.",
     )
     p_download.add_argument("--start", required=True, help="Start date (YYYY-MM-DD)")
     p_download.add_argument("--end", required=True, help="End date (YYYY-MM-DD)")
@@ -73,6 +73,7 @@ def build_parser() -> argparse.ArgumentParser:
     def _run_download(g: GlobalArgs, a: argparse.Namespace) -> int:
         _ = g
         from baytrader.download import _parse_date
+        from baytrader.extract_universe import load_universe_csv
 
         data_path = (Path(os.environ.get("DATA_PATH", "")).expanduser()).resolve()
         if not str(data_path) or str(data_path) == str(Path(".").resolve()):
@@ -80,12 +81,18 @@ def build_parser() -> argparse.ArgumentParser:
                 "DATA_PATH is not set. Add DATA_PATH=<folder> to your .env file."
             )
 
+        try:
+            universe = load_universe_csv(data_path=data_path).tickers
+        except ValueError as e:
+            raise SystemExit(str(e)) from e
+
         dargs = DownloadArgs(
             start=_parse_date(str(a.start)),
             end=_parse_date(str(a.end)),
             data_path=data_path,
             dataset=str(a.dataset),
             file_format=str(a.format),  # type: ignore[arg-type]
+            universe=universe,
         )
         return run_download(args=dargs)
 
