@@ -289,7 +289,8 @@ def build_nbbo_event_stream(quotes: pd.DataFrame) -> pd.DataFrame:
 
     - stable-sort by (sip_timestamp, sequence_number)
     - maintain per-venue top-of-book state (bid/ask per exchange)
-    - at each event compute best_bid=max(bid_price across venues), best_ask=min(ask_price across venues)
+        - at each event compute best_bid=max(bid_price across venues),
+            best_ask=min(ask_price across venues)
     - keep all events (no dedup)
 
     Output uses lower_snake_case.
@@ -331,12 +332,12 @@ def build_nbbo_event_stream(quotes: pd.DataFrame) -> pd.DataFrame:
     out_best_ask_size: list[float] = []
 
     for row in q.itertuples(index=False):
-        be = getattr(row, "bid_exchange")
-        ae = getattr(row, "ask_exchange")
-        bp = getattr(row, "bid_price")
-        ap = getattr(row, "ask_price")
-        bs = getattr(row, "bid_size")
-        a_s = getattr(row, "ask_size")
+        be = row.bid_exchange
+        ae = row.ask_exchange
+        bp = row.bid_price
+        ap = row.ask_price
+        bs = row.bid_size
+        a_s = row.ask_size
 
         if isinstance(be, str) and be:
             bid_state[be] = (
