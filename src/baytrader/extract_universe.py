@@ -173,38 +173,47 @@ def _extract_csv_to_parquet(
             nrows=0,
             compression=compression,
             dtype_backend="pyarrow",
+            low_memory=False,
         )
         dtype_overrides: dict[str, str] = {}
         for c in header.columns:
             lc = str(c).lower()
-            if lc in {"ticker", "symbol", "conditions"}:
+            # 'indicators' and 'conditions' are frequently mixed-type across rows/files.
+            # Force them to strings so chunked reads don't infer different dtypes per chunk.
+            if lc in {"ticker", "symbol", "conditions", "indicators"}:
                 dtype_overrides[str(c)] = "string[pyarrow]"
     except Exception:
         dtype_overrides = {}
 
     try:
-        for chunk in pd.read_csv(
-            raw_path,
-            chunksize=chunk_rows,
-            compression=compression,
-            dtype_backend="pyarrow",
-            dtype=dtype_overrides or None,
-        ):
-            if ticker_col is None:
-                ticker_col = detect_ticker_column(chunk.columns)
+        import warnings
 
-            tick = chunk[ticker_col].astype("string[pyarrow]").str.upper()
-            filtered = chunk.loc[tick.isin(universe)]
-            if filtered.empty:
-                continue
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore", category=pd.errors.DtypeWarning)
 
-            table = pa.Table.from_pandas(filtered, preserve_index=False)
-            if writer is None:
-                out_path.parent.mkdir(parents=True, exist_ok=True)
-                writer = pq.ParquetWriter(out_path, table.schema, compression="zstd")
+            for chunk in pd.read_csv(
+                raw_path,
+                chunksize=chunk_rows,
+                compression=compression,
+                dtype_backend="pyarrow",
+                dtype=dtype_overrides or None,
+                low_memory=False,
+            ):
+                if ticker_col is None:
+                    ticker_col = detect_ticker_column(chunk.columns)
 
-            writer.write_table(table)
-            rows_written += int(filtered.shape[0])
+                tick = chunk[ticker_col].astype("string[pyarrow]").str.upper()
+                filtered = chunk.loc[tick.isin(universe)]
+                if filtered.empty:
+                    continue
+
+                table = pa.Table.from_pandas(filtered, preserve_index=False)
+                if writer is None:
+                    out_path.parent.mkdir(parents=True, exist_ok=True)
+                    writer = pq.ParquetWriter(out_path, table.schema, compression="zstd")
+
+                writer.write_table(table)
+                rows_written += int(filtered.shape[0])
     finally:
         if writer is not None:
             writer.close()

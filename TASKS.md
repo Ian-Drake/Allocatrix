@@ -56,7 +56,9 @@ Each task should result in **runnable code** and a **verifiable artifact**.
   - fetch
   - build-dataset
   - train-tcn
+  - eval-tcn
   - train-diffusion
+  - eval-diffusion
   - predict
   - walkforward-eval
   - gpu-check
@@ -67,44 +69,84 @@ Each task should result in **runnable code** and a **verifiable artifact**.
 
 ---
 
-# PHASE 1 — Polygon Ingest & Cache
+# PHASE 1 — Tick Ingest + Derived Caches (NBBO → clean 1m bars)
 
-## Task 1.1 — Polygon client
+## Task 1.1 — NBBO cache (from per-venue quotes under DATA_PATH)
 **Do**
-- Implement `polygon_client.py`
-- Read API key from env
-- Support 1‑minute aggregates
-- Handle pagination + retries
+- Read local Parquet quote flat-files under `DATA_PATH` (per symbol/day)
+- Order quotes by (`sip_timestamp`, `sequence_number`)
+- Maintain per-venue top-of-book state and compute NBBO:
+  - `best_bid = max_venues(bid_price)`
+  - `best_ask = min_venues(ask_price)`
+- Write derived cache to `data_cache/nbbo/` (Parquet; partitioned by `symbol/year/month/day`)
 
 **Acceptance**
-- Unit test with mocked HTTP response
-- Rate‑limit safe retry logic exists
+- Unit test builds NBBO correctly from a tiny multi-venue quote fixture (expected best bid/ask over time)
+- Output cache exists under `data_cache/nbbo/` with deterministic row ordering for the same input
 
 ---
 
-## Task 1.2 — Parquet cache writer
+## Task 1.2 — Trade enrichment + cleaning contract + 1m bars
 **Do**
-- Implement `cache.py`
-- Write bars to:
-  `data_cache/symbol=MSFT/year=YYYY/month=MM/day=DD/*.parquet`
-- Enforce schema consistency
+- Enrich each trade with as-of NBBO snapshot (`nbbo_ts <= t_trade`) and compute `quote_age_ns`
+- Apply the trade cleaning contract before aggregation:
+  - RTH-only (`America/New_York` `[09:30, 16:00)`)
+  - Corrections allowlist (default `correction == 0`; configurable)
+  - Conditions allowlist (configurable)
+  - Stale quote filter: drop if `quote_age_ns > BAYTRADER_STALE_QUOTE_NS`
+  - Off-NBBO tolerance filter: keep only prices in `[best_bid - tol, best_ask + tol]` where
+    `tol = max(BAYTRADER_OFF_NBBO_ABS_TOL_USD, BAYTRADER_OFF_NBBO_SPREAD_MULT * (best_ask - best_bid))`
+- Write derived caches:
+  - `data_cache/trades_enriched/` (enriched + filtered trades; Parquet; partitioned by `symbol/year/month/day`)
+  - `data_cache/bars_1m/` (clean 1-minute OHLCV + VWAP + trade count from eligible trades; Parquet; partitioned by `symbol/year/month/day`)
+
+**Note on quote features (important)**
+- For MVP, `bars_1m/` is intentionally **trade-derived only** (OHLCV + VWAP). Quotes/NBBO are used to *clean* trades, not to define the bar schema.
+- Quote-derived features (spread, mid, quote-age stats, locked/crossed time, etc.) can be:
+  - computed during **Phase 2 feature engineering** by joining per-minute bars to `data_cache/nbbo/`, or
+  - (optional optimization) persisted as a separate derived cache like `data_cache/quote_features_1m/` to keep `bars_1m/` stable and small.
 
 **Acceptance**
-- Running fetch twice does not duplicate rows
-- Parquet files readable via pandas
+- Unit test verifies each filter is enforced (RTH-only, correction/conditions allowlists, stale-quote max age, off-NBBO tolerance)
+- Unit test verifies a known minute produces expected `open/high/low/close/volume/vwap/trades` in `data_cache/bars_1m/`
 
 ---
 
-## Task 1.3 — Fetch CLI
+## Task 1.2b — Quote features 1m cache (NBBO → quote_features_1m)
+**Do**
+- Build a separate 1-minute quote feature cache derived from the NBBO stream.
+- Input: `data_cache/nbbo/` (per symbol/day NBBO events ordered by (`sip_timestamp`, `sequence_number`)).
+- Output: `data_cache/quote_features_1m/` (Parquet; partitioned by `symbol/year/month/day`).
+- Compute per-minute features per [SPEC.md](SPEC.md) §6.5:
+  - Minimum required: `best_bid_close`, `best_ask_close`, `mid_close`, `spread_close`, `nbbo_updates`, `quote_coverage_ns`
+  - Recommended additional: `mid_tw`, `spread_tw`, `spread_min`, `spread_max`, `locked_ns`, `crossed_ns`, `effective_spread_close`
+- RTH-only minutes (America/New_York `[09:30, 16:00)`), UTC minute-start timestamp contract.
+- Deterministic aggregation: stable-sort NBBO events and integrate piecewise-constant state within each minute.
+
+**Acceptance**
+- Unit test with a tiny NBBO fixture verifies:
+  - `nbbo_updates` counts correctly per minute
+  - `best_bid_close/best_ask_close` reflect the as-of minute close state
+  - `spread_tw` matches a hand-computed time-weighted spread for a minute with multiple NBBO updates
+  - `locked_ns/crossed_ns` are correct for an interval with `bid >= ask`
+- Output cache exists under `data_cache/quote_features_1m/` with deterministic row ordering for the same input
+
+---
+
+## Task 1.3 — `fetch` CLI (local trades+quotes → derived caches)
 **Do**
 - Implement:
   `fetch --symbols MSFT,VGT,SPY,TLT,VIX --start YYYY-MM-DD --end YYYY-MM-DD`
+- Read inputs from `DATA_PATH` and write derived caches under `data_cache/`:
+  - `data_cache/nbbo/`
+  - `data_cache/trades_enriched/`
+  - `data_cache/bars_1m/`
 - Log progress
 
 **Acceptance**
-- Cache populated for all 5 tickers
-- Row counts look reasonable
-- Missing days logged, not fatal
+- Running `fetch` on a small test fixture populates all three cache roots with expected partitions
+- Re-running `fetch` with the same inputs is deterministic (same output rows for the same inputs)
+- Missing days are logged and non-fatal
 
 ---
 

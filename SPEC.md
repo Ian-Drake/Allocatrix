@@ -1,4 +1,4 @@
-# BayTrader MVP Spec (TCN → Diffusion) — Polygon 1m (Windows + VS Code)
+# BayTrader MVP Spec (TCN → Diffusion) — Tick-Derived 1m Bars (Trades cleaned via Quotes/NBBO) (Windows + VS Code)
 
 Version: v1.2 (2025-12-18)  
 Primary environment: Windows 10/11, VS Code, Python 3.11, PyTorch + CUDA (Tesla P40)
@@ -24,7 +24,7 @@ Build a two-stage generative system that, given the last **30 minutes** of **1-m
 **Non-goals (explicitly out of scope for MVP)**
 - Live trading/execution
 - Portfolio optimization / rebalancing
-- Tick-level microstructure modeling
+- Tick-level microstructure modeling (beyond using ticks to build clean 1m bars)
 - Options / Greeks modeling
 - Real-time streaming infrastructure (batch “as-of now” is fine)
 
@@ -125,13 +125,79 @@ The Tesla P40 is a Pascal GPU (compute capability 6.1). This affects which featu
 
 ---
 
-## 6) Data: Polygon.io
+## 6) Data: Trades + Quotes Flat Files (SIP)
 
 ### 6.1 Data source
-Use Polygon “Aggregates” endpoint for 1-minute bars per instrument.
+We build clean 1-minute bars from **trade** prints, using **top-of-book quote** flat-files to compute NBBO and enforce a trade-cleaning contract.
+
+Inputs (per symbol/day):
+- **Trades** (SIP): tick-level prints with `conditions` + `correction` fields.
+- **Quotes** (SIP): per-venue top-of-book quotes (bid/ask) across major U.S. exchanges and darkpools.
+
+Timestamp contract:
+- Use `sip_timestamp` as the canonical time for ordering and joining.
+- `sip_timestamp` is **epoch nanoseconds** (int64).
+- `participant_timestamp` may be used for diagnostics but is not used for ordering/alignment in the MVP.
+
+RTH-only policy (MVP):
+- Build bars from Regular Trading Hours (RTH) only, defined in `America/New_York` as `[09:30, 16:00)`.
 
 ### 6.2 Cache format (raw)
-Write raw bars to Parquet, partitioned by:
+Raw tick data is assumed to live under `DATA_PATH` (external to this repo).
+
+Repo-local derived caches (gitignored) may be written under `data_cache/` in Parquet.
+Recommended derived layers (per symbol/day):
+- `data_cache/nbbo/` : consolidated NBBO stream derived from per-venue quotes
+- `data_cache/trades_enriched/` : trades with as-of NBBO columns attached
+- `data_cache/bars_1m/` : clean 1-minute bars (OHLCV + VWAP + trade count) derived from filtered trades
+
+Optional (not required for MVP):
+- `data_cache/quote_features_1m/` : per-minute quote/NBBO summary features (e.g., spread/mid, quote update counts, time-weighted spread). This can be generated to speed up Phase 2 feature engineering, but keeping `bars_1m/` trade-only is simpler and avoids schema churn.
+
+### 6.5 Optional cache: `quote_features_1m/` (per-minute NBBO features)
+
+Goal: provide a compact, per-minute summary of the NBBO/quote stream so Phase 2 feature engineering can join minute bars to quote state without re-scanning raw tick quotes.
+
+**Inputs**
+- `data_cache/nbbo/` (NBBO event stream), ordered by (`sip_timestamp`, `sequence_number`).
+
+**Output**
+- Parquet, partitioned by `symbol/year/month/day`:
+  - `data_cache/quote_features_1m/symbol=.../year=YYYY/month=MM/day=DD/part-0000.parquet`
+
+**Timestamp contract**
+- Bar timestamp: `timestamp` is the **minute start** in UTC (`datetime64[ns, UTC]`).
+- Minute window: `[timestamp, timestamp + 1 minute)`.
+- RTH-only: only emit minutes in RTH (America/New_York `[09:30, 16:00)`) for weekdays.
+
+**Required columns (recommended MVP-minimal)**
+- `symbol` (string, upper)
+- `timestamp` (UTC minute start)
+- `best_bid_close` (float): NBBO best bid **as-of minute close** (last NBBO event with `nbbo_ts < timestamp+1m`, carried-forward from prior minutes if needed within the same RTH session)
+- `best_ask_close` (float): NBBO best ask as-of minute close
+- `mid_close` (float): `(best_bid_close + best_ask_close)/2`
+- `spread_close` (float): `best_ask_close - best_bid_close`
+- `nbbo_updates` (int): count of NBBO events with `timestamp <= nbbo_ts < timestamp+1m`
+- `quote_coverage_ns` (int): nanoseconds within the minute where NBBO is defined (both bid and ask present). For MVP, if NBBO is always defined after the first quote of the day, this will be close to 60s for most minutes.
+
+**Highly useful additional columns (recommended for modeling)**
+- `mid_tw` (float): time-weighted average mid over the minute
+- `spread_tw` (float): time-weighted average spread over the minute
+- `spread_min` / `spread_max` (float): min/max spread observed during the minute
+- `locked_ns` (int): time in ns where `spread_close == 0` is not sufficient; track intervals where `best_bid >= best_ask` (locked/crossed)
+- `crossed_ns` (int): time in ns where `best_bid > best_ask`
+- `effective_spread_close` (float): `spread_close / mid_close` (guard divide-by-zero)
+
+**Computation details (determinism + edge cases)**
+- Use the NBBO stream’s timestamps (`nbbo_ts`) as the change-points for piecewise-constant NBBO state.
+- Time-weighted features are computed by integrating the state over sub-intervals between change-points within the minute.
+- If there is no NBBO state yet for a minute (no prior quotes), emit the row with NA for price-derived fields and `quote_coverage_ns = 0` (or simply omit that minute; choose one policy and keep it consistent).
+- Determinism: stable-sort NBBO events by (`sip_timestamp`, `sequence_number`) and do stable aggregation.
+
+**Why separate from `bars_1m/`**
+- Trade bars remain “price/volume from prints”, while quote bars remain “liquidity/state from NBBO”. This avoids schema churn and makes Phase 2 feature toggling cheap.
+
+If you use Parquet partitioning, prefer:
 - `symbol=.../year=YYYY/month=MM/day=DD/part-*.parquet`
 
 ### 6.3 Dataset format (derived)
@@ -148,6 +214,40 @@ Include:
 - timestamps for the window end (as-of time)
 - per-window normalization stats needed to de-normalize targets
 
+### 6.4 NBBO construction + trade cleaning (MVP contract)
+Because quotes are **per venue**, we first build NBBO and then enrich/clean trades.
+
+NBBO construction (per symbol/day):
+- Ingest all quote events and order by (`sip_timestamp`, `sequence_number`).
+- Maintain the latest bid/ask per venue.
+- Define NBBO at time `t` as:
+  - `best_bid(t) = max_venues(bid_price)`
+  - `best_ask(t) = min_venues(ask_price)`
+- NBBO uses **all venues present** in the quote file (exchanges + darkpools).
+
+Trade enrichment (as-of join):
+- For each trade at time `t_trade` (`sip_timestamp`), attach the most recent NBBO snapshot with `nbbo_ts <= t_trade`.
+- Record `quote_age_ns = t_trade - nbbo_ts`.
+
+Trade filters (applied before 1m aggregation):
+- **RTH-only**: drop trades outside RTH.
+- **Corrections**: by default, keep only trades with `correction == 0` (configurable).
+- **Conditions**: keep only trades whose `conditions` set is within an allowlist (configurable).
+- **Stale quotes**: drop trades where `quote_age_ns > BAYTRADER_STALE_QUOTE_NS`.
+- **Off-NBBO outliers**: drop trades whose price is outside `[best_bid - tol, best_ask + tol]`.
+  - Default tolerance is spread-aware:
+    - `tol = max(BAYTRADER_OFF_NBBO_ABS_TOL_USD, BAYTRADER_OFF_NBBO_SPREAD_MULT * (best_ask - best_bid))`
+
+Configuration (set via `.env` / environment variables):
+- `DATA_PATH` (required): root folder containing the extracted Parquet files
+- `BAYTRADER_MARKET_TZ` (default `America/New_York`)
+- `BAYTRADER_RTH_START` (default `09:30`), `BAYTRADER_RTH_END` (default `16:00`)
+- `BAYTRADER_STALE_QUOTE_NS` (default `2000000000` = 2 seconds)
+- `BAYTRADER_OFF_NBBO_ABS_TOL_USD` (default `0.01`)
+- `BAYTRADER_OFF_NBBO_SPREAD_MULT` (default `0.5`)
+- `BAYTRADER_TRADE_CONDITIONS_ALLOWLIST` (comma-separated; default empty = no filtering until configured)
+- `BAYTRADER_TRADE_CORRECTION_ALLOWLIST` (comma-separated; default `0`)
+
 ---
 
 ## 7) Time Alignment Rules (Multi-instrument)
@@ -155,11 +255,12 @@ Include:
 We require a shared minute grid.
 
 **MVP approach (simple + robust)**
-- Build a master timeline from MSFT’s minutes.
-- For other instruments, join on timestamp.
-- If any required instrument bar is missing at a minute:
-  - mark as missing and **drop** that sample window (recommended MVP).
-- Restrict to regular market hours (configurable).
+- Build clean 1-minute bars for each instrument from tick data (see §6.4).
+- Restrict to RTH only.
+- Build a master timeline from MSFT’s available 1-minute bars.
+- For other instruments, inner-join on minute timestamp.
+- If any required instrument bar is missing at a minute (including minutes with zero eligible trades after filtering):
+  - treat as missing and **drop** that sample window (recommended MVP).
 
 ---
 
@@ -167,10 +268,14 @@ We require a shared minute grid.
 
 ### 8.1 Base feature per instrument per minute
 For each instrument `j` at minute `t`:
-- `r_t` = log return of close
-- `range_t` = log(high / low)
+- `r_t` = log return of minute VWAP (default)
+- `range_t` = log(high / low) (computed from eligible trade prices)
 - `vol_t` = rolling std of returns over last 10 bars (within the lookback window)
-- `v_t` = log1p(volume) (if volume exists; if not, omit for that instrument)
+- `v_t` = log1p(volume)
+
+Each minute bar is built from filtered trades:
+- `vwap_t = sum(price * size) / sum(size)` over eligible trades in the minute
+- `open/high/low/close` from eligible trade prices in the minute (open=first, close=last)
 
 Concatenate instrument features into one vector per minute:
 - `x_t = [features(MSFT), features(VGT), features(SPY), features(TLT), features(VIX)]`
@@ -247,9 +352,9 @@ We diffuse the MSFT future return sequence length `H=5`.
 All commands are deterministic with `--seed`.
 
 ### `fetch`
-Fetch and cache Polygon bars.
+Build (or refresh) derived caches from local Parquet trades+quotes under `DATA_PATH`.
 - Inputs: symbols list, start/end dates
-- Output: parquet cache
+- Output: repo-local Parquet caches (NBBO, enriched trades, and/or 1m bars)
 
 Example:
 - `fetch --symbols MSFT,VGT,SPY,TLT,VIX --start 2024-01-01 --end 2025-12-01`
@@ -342,11 +447,11 @@ baytrader-mvp/
 - tests + ruff pass
 - CLI skeleton works
 
-### Phase 1 — Polygon ingest + cache
+### Phase 1 — Tick ingest + derived caches (NBBO → clean 1m bars)
 **Done when**
-- `fetch` populates parquet cache for MSFT,VGT,SPY,TLT,VIX
-- retry/backoff and rate-limit handling included
-- mock tests pass
+- `fetch` reads Parquet trades+quotes under `DATA_PATH` and writes derived caches
+- NBBO construction, as-of join, and trade filters are deterministic
+- Clean 1m bars (OHLCV + VWAP) exist for MSFT,VGT,SPY,TLT,VIX
 
 ### Phase 2 — Dataset builder (aligned multivariate)
 **Done when**
@@ -380,7 +485,7 @@ baytrader-mvp/
 
 MVP is complete when you can run:
 
-1) `fetch` (cache Polygon 1m bars)
+1) `fetch` (build clean 1m bars from local trades+quotes)
 2) `build-dataset` (aligned windows, MSFT target)
 3) `train-tcn` + `eval-tcn`
 4) `train-diffusion` + `eval-diffusion`
